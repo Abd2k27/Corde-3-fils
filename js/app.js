@@ -173,8 +173,17 @@
         <h1>${esc(CFG.appName)}</h1>
         <p class="muted">« La corde à trois fils ne se rompt pas facilement. » — Ecclésiaste 4:12</p>
         <button class="btn" id="login">Se connecter avec Google</button>
+        <p class="small warn" id="err"></p>
       </div>`;
-    $app.querySelector("#login").onclick = () => Store.signIn().catch((e) => toast("Connexion annulée"));
+    $app.querySelector("#login").onclick = () => Store.signIn().catch((e) => {
+      const msgs = {
+        "auth/unauthorized-domain": `Domaine non autorisé : ajoute « ${location.hostname} » dans Firebase > Authentication > Paramètres > Domaines autorisés.`,
+        "auth/operation-not-allowed": "Le fournisseur Google n'est pas activé dans Firebase > Authentication.",
+        "auth/popup-blocked": "Fenêtre bloquée par le navigateur : autorise les pop-ups pour ce site.",
+        "auth/popup-closed-by-user": "Fenêtre fermée avant la fin de la connexion."
+      };
+      $app.querySelector("#err").innerHTML = esc(msgs[e.code] || "") + `<br><code>${esc(e.code || e.message)}</code>`;
+    });
   }
   function renderMsg(icon, title, html, withLogout) {
     $app.innerHTML = `<div class="screen center"><div class="logo">${icon}</div><h2>${title}</h2><p class="muted">${html}</p>
