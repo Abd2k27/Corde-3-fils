@@ -8,6 +8,7 @@ window.PARCOURS.push({
   desc: "Se fréquenter selon Dieu : discerner, garder son cœur, attendre le bon moment et bien se préparer.",
   weeks: [
     {
+      id: "avant-1",
       emoji: "🐪",
       title: "Chercher la volonté de Dieu",
       intro: "Le serviteur d'Abraham part chercher une épouse pour Isaac. Avant de chercher, il prie. L'histoire d'Isaac et Rébecca commence par une prière… et finit par « il l'aima ».",
@@ -36,6 +37,7 @@ window.PARCOURS.push({
       priere: "Seigneur, merci pour notre histoire. Dirige nos pas et montre-nous ta volonté pour notre avenir."
     },
     {
+      id: "avant-2",
       emoji: "🛡️",
       title: "Garder son cœur",
       intro: "« Garde ton cœur plus que toute autre chose. » Ce n'est pas fermer son cœur, c'est en prendre soin : ce qu'on regarde, ce qu'on dit, où l'on va.",
@@ -61,6 +63,7 @@ window.PARCOURS.push({
       priere: "Seigneur, garde nos cœurs. Que nos yeux, nos paroles et nos pas te plaisent."
     },
     {
+      id: "avant-3",
       emoji: "⏳",
       title: "Le bon moment",
       intro: "Trois fois, le Cantique répète : « ne réveillez pas l'amour avant qu'il le veuille. » Il y a un temps pour tout. L'attente n'est pas du temps perdu, c'est du temps qui prépare.",
@@ -87,6 +90,7 @@ window.PARCOURS.push({
       priere: "Seigneur, tu fais toute chose bonne en son temps. Donne-nous la patience et la paix dans l'attente."
     },
     {
+      id: "avant-4",
       emoji: "🤍",
       title: "Honorer Dieu avec notre corps",
       intro: "La Bible parle sans détour de pureté. Pas pour interdire par principe, mais parce que notre corps est précieux : il est le temple du Saint-Esprit. Un sujet à aborder avec respect et franchise.",
@@ -116,6 +120,7 @@ window.PARCOURS.push({
       priere: "Seigneur, nous t'appartenons. Aide-nous à t'honorer dans notre corps et à nous respecter l'un l'autre."
     },
     {
+      id: "avant-5",
       emoji: "🐂",
       title: "Marcher dans la même direction",
       intro: "Le joug unit deux bœufs pour qu'ils tirent ensemble. S'ils ne vont pas dans le même sens, tout se bloque. Partager la même foi, les mêmes valeurs et la même direction, c'est essentiel.",
@@ -143,6 +148,7 @@ window.PARCOURS.push({
       priere: "Seigneur, unis nos cœurs et nos pensées. Fais-nous marcher ensemble, dans ta direction."
     },
     {
+      id: "avant-6",
       emoji: "🏗️",
       title: "Bien se préparer",
       intro: "Jésus parle de celui qui veut bâtir une tour : il s'assied d'abord pour calculer. Le mariage aussi se prépare : la sagesse bâtit la maison.",
@@ -170,6 +176,7 @@ window.PARCOURS.push({
       priere: "Seigneur, donne-nous ta sagesse pour bâtir. Que notre maison soit fondée sur toi."
     },
     {
+      id: "avant-7",
       emoji: "👥",
       title: "Bien entourés",
       intro: "Un couple ne grandit pas seul. La Bible encourage à chercher des conseils et à rester dans une communauté qui nous pousse vers le bien.",

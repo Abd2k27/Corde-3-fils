@@ -8,6 +8,7 @@ window.PARCOURS.push({
   desc: "La foi dans la vraie vie : les paroles, l'argent, le service, les amis, le travail, le repos et la famille.",
   weeks: [
     {
+      id: "quotidien-1",
       emoji: "💬",
       title: "Le pouvoir des paroles",
       intro: "« La mort et la vie sont au pouvoir de la langue. » Dans un couple, une phrase peut construire pour des années… ou blesser pour longtemps.",
@@ -37,6 +38,7 @@ window.PARCOURS.push({
       priere: "Seigneur, mets une garde à notre bouche. Que nos paroles guérissent et construisent."
     },
     {
+      id: "quotidien-2",
       emoji: "💰",
       title: "L'argent",
       intro: "Jésus parle plus d'argent que de beaucoup d'autres sujets. Ce n'est pas l'argent qui est mauvais, c'est l'amour de l'argent. Et c'est l'un des premiers sujets de dispute dans les couples.",
@@ -67,6 +69,7 @@ window.PARCOURS.push({
       priere: "Seigneur, garde nos cœurs de l'amour de l'argent. Apprends-nous le contentement et la générosité."
     },
     {
+      id: "quotidien-3",
       emoji: "🤲",
       title: "Servir l'autre",
       intro: "Jésus, qui était Dieu, a pris la forme d'un serviteur. Dans le couple, la question n'est pas « qu'est-ce que l'autre fait pour moi ? » mais « comment puis-je le servir ? ».",
@@ -92,6 +95,7 @@ window.PARCOURS.push({
       priere: "Seigneur Jésus, toi qui t'es fait serviteur, donne-nous un cœur humble pour nous servir l'un l'autre."
     },
     {
+      id: "quotidien-4",
       emoji: "🎒",
       title: "Porter les fardeaux",
       intro: "Le couple, c'est aussi se relayer : pleurer avec celui qui pleure, se réjouir avec celui qui se réjouit, et transmettre la consolation qu'on a reçue de Dieu.",
@@ -120,6 +124,7 @@ window.PARCOURS.push({
       priere: "Dieu de toute consolation, apprends-nous à porter les fardeaux l'un de l'autre."
     },
     {
+      id: "quotidien-5",
       emoji: "🤝",
       title: "Les amis et l'entourage",
       intro: "On devient comme ceux qu'on fréquente. Un couple a besoin d'amis qui le tirent vers le haut, et d'un ami « plus attaché qu'un frère ».",
@@ -147,6 +152,7 @@ window.PARCOURS.push({
       priere: "Seigneur, merci pour nos amis. Entoure-nous de personnes sages et rends-nous de bons amis pour les autres."
     },
     {
+      id: "quotidien-6",
       emoji: "⚖️",
       title: "Travail et repos",
       intro: "Dieu nous appelle à travailler « de bon cœur, comme pour le Seigneur »… et aussi à nous reposer. Ni paresse, ni épuisement : un rythme qui laisse de la place à Dieu et à l'autre.",
@@ -178,6 +184,7 @@ window.PARCOURS.push({
       priere: "Seigneur, nous venons à toi fatigués. Donne-nous ton repos et apprends-nous un rythme de vie sain."
     },
     {
+      id: "quotidien-7",
       emoji: "👶",
       title: "Les futurs enfants",
       intro: "« Les fils sont un héritage de l'Éternel. » Même si c'est encore loin, parler ensemble de la famille qu'on imagine aide à se connaître et à se préparer.",

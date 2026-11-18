@@ -12,7 +12,7 @@ window.PARCOURS.push({
   desc: "Les grands textes sur le couple : le plan de Dieu, l'amour, le pardon, l'alliance et le foyer.",
   weeks: [
   {
-    id: 1,
+    id: "1",
     emoji: "🌱",
     title: "Le plan de Dieu pour le couple",
     intro: "Avant même le premier péché, Dieu regarde sa création et dit qu'une chose n'est « pas bon » : que l'homme soit seul. Le couple, c'est son idée avant d'être la nôtre.",
@@ -41,7 +41,7 @@ window.PARCOURS.push({
     priere: "Seigneur, merci de nous avoir réunis. Apprends-nous à être une vraie aide l'un pour l'autre."
   },
   {
-    id: 2,
+    id: "2",
     emoji: "🪢",
     title: "Dieu au centre : la corde à trois fils",
     intro: "Deux valent mieux qu'un… mais une corde à trois fils ne se rompt pas facilement. Le troisième fil, c'est Dieu : c'est lui qui tient quand nos forces lâchent.",
@@ -69,7 +69,7 @@ window.PARCOURS.push({
     priere: "Seigneur, sois le troisième fil de notre corde. Bâtis toi-même ce que nous construisons à deux."
   },
   {
-    id: 3,
+    id: "3",
     emoji: "❤️",
     title: "L'amour en actes",
     intro: "Paul ne définit pas l'amour par des sentiments mais par des actes. Ici, « charité » traduit le grec agapè : l'amour qui choisit de donner.",
@@ -94,7 +94,7 @@ window.PARCOURS.push({
     priere: "Seigneur, apprends-nous un amour patient et plein de bonté, qui ne cherche pas son propre intérêt."
   },
   {
-    id: 4,
+    id: "4",
     emoji: "🗣️",
     title: "Se parler, gérer les conflits",
     intro: "Prompt à écouter, lent à parler, lent à se mettre en colère. La recette est simple ; l'appliquer en plein désaccord, beaucoup moins.",
@@ -128,7 +128,7 @@ window.PARCOURS.push({
     priere: "Seigneur, rends-nous prompts à écouter et lents à nous mettre en colère. Mets des paroles douces dans nos bouches."
   },
   {
-    id: 5,
+    id: "5",
     emoji: "🕊️",
     title: "Pardon et grâce",
     intro: "« Soixante-dix fois sept fois » : Jésus ne donne pas un quota, il décrit un état d'esprit. On pardonne parce qu'on a soi-même été pardonné.",
@@ -157,7 +157,7 @@ window.PARCOURS.push({
     priere: "Seigneur, merci pour ton pardon. Aide-nous à nous pardonner comme tu nous as pardonnés."
   },
   {
-    id: 6,
+    id: "6",
     emoji: "💍",
     title: "Le mariage, une alliance",
     intro: "Ruth s'engage « jusqu'à la mort », Paul compare le couple à l'amour du Christ pour l'Église. Dans la Bible, le mariage est une alliance, pas un simple contrat.",
@@ -195,7 +195,7 @@ window.PARCOURS.push({
     priere: "Seigneur, apprends-nous à aimer comme le Christ aime : fidèlement, humblement, jusqu'au bout."
   },
   {
-    id: 7,
+    id: "7",
     emoji: "🏡",
     title: "Un foyer qui sert Dieu",
     intro: "« Moi et ma maison, nous servirons l'Éternel. » Aquilas et Priscille travaillaient ensemble, ouvraient leur maison et enseignaient ensemble : un couple en mission.",

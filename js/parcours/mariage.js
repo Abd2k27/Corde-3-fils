@@ -8,6 +8,7 @@ window.PARCOURS.push({
   desc: "Ce que la Bible dit du mariage : l'union, l'honneur, le don de soi, la fidélité et un amour fort comme la mort.",
   weeks: [
     {
+      id: "mariage-1",
       emoji: "🔗",
       title: "Ce que Dieu a uni",
       intro: "Interrogé sur le divorce, Jésus revient au commencement : Dieu a fait l'homme et la femme, et c'est lui qui les unit. Le mariage n'est pas qu'un contrat entre deux personnes : Dieu y est partie prenante.",
@@ -31,6 +32,7 @@ window.PARCOURS.push({
       priere: "Seigneur, si tu nous unis un jour, garde ce que tu auras joint."
     },
     {
+      id: "mariage-2",
       emoji: "👑",
       title: "S'honorer l'un l'autre",
       intro: "Pierre parle d'une beauté intérieure « d'un grand prix devant Dieu », et demande aux maris d'honorer leur femme comme cohéritière de la grâce. L'honneur, c'est voir la valeur de l'autre.",
@@ -54,6 +56,7 @@ window.PARCOURS.push({
       priere: "Seigneur, apprends-nous à nous honorer, à voir la valeur que tu as mise en l'autre."
     },
     {
+      id: "mariage-3",
       emoji: "🎁",
       title: "Se donner l'un à l'autre",
       intro: "Paul décrit le mariage comme un don mutuel, où chacun appartient à l'autre et où rien ne se décide sans « commun accord ». Une réciprocité radicale pour l'époque, et encore aujourd'hui.",
@@ -77,6 +80,7 @@ window.PARCOURS.push({
       priere: "Seigneur, apprends-nous à nous donner l'un à l'autre, librement et avec joie."
     },
     {
+      id: "mariage-4",
       emoji: "🔒",
       title: "La fidélité",
       intro: "Malachie rappelle que Dieu est témoin de l'alliance entre un homme et « la femme de sa jeunesse ». La fidélité ne commence pas après le mariage : elle se cultive dès aujourd'hui.",
@@ -104,6 +108,7 @@ window.PARCOURS.push({
       priere: "Seigneur, tu es témoin de notre engagement. Garde-nous fidèles en pensée, en parole et en acte."
     },
     {
+      id: "mariage-5",
       emoji: "💎",
       title: "Plus précieux que les perles",
       intro: "Proverbes 31 décrit une femme forte, sage et qui craint Dieu. Ses qualités sont un modèle pour les deux : la confiance, le courage, la sagesse, la crainte de Dieu plutôt que l'apparence.",
@@ -132,6 +137,7 @@ window.PARCOURS.push({
       priere: "Seigneur, donne-nous la vraie beauté : celle d'un cœur qui te craint."
     },
     {
+      id: "mariage-6",
       emoji: "🍇",
       title: "Un foyer béni",
       intro: "Le Psaume 128 dessine un foyer heureux : une vigne féconde, des plants d'olivier autour de la table. Et Paul rappelle l'essentiel : « Que tout ce que vous faites se fasse avec charité. »",
@@ -163,6 +169,7 @@ window.PARCOURS.push({
       priere: "Seigneur, bénis notre futur foyer. Qu'il soit plein de foi, de paix et de charité."
     },
     {
+      id: "mariage-7",
       emoji: "🔥",
       title: "Un amour fort comme la mort",
       intro: "Le Cantique des cantiques célèbre l'amour entre un homme et une femme. Il finit par une déclaration : l'amour est fort comme la mort, les grandes eaux ne peuvent l'éteindre.",

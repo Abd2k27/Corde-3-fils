@@ -7,7 +7,7 @@ window.Store = (function () {
   const subs = [];
 
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
-  const write = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} };
+  const write = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { throw new Error("Stockage local plein"); } };
 
   return {
     mode: "local",

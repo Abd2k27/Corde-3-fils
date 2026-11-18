@@ -8,6 +8,7 @@ window.PARCOURS.push({
   desc: "La fondation : connaître Dieu, l'aimer, lui faire confiance, chacun et ensemble.",
   weeks: [
     {
+      id: "dieu-1",
       emoji: "🍇",
       title: "Demeurer en lui",
       intro: "Jésus se compare à un cep de vigne et nous à ses sarments. Un sarment ne force pas pour porter du fruit : il reste attaché. La vie spirituelle commence là.",
@@ -33,6 +34,7 @@ window.PARCOURS.push({
       priere: "Seigneur, garde-nous attachés à toi. Sans toi nous ne pouvons rien faire."
     },
     {
+      id: "dieu-2",
       emoji: "❤️‍🔥",
       title: "Le plus grand commandement",
       intro: "Toute la Bible tient en deux phrases : aimer Dieu de tout son être, et aimer son prochain comme soi-même. Et ton prochain le plus proche, c'est peut-être la personne à côté de toi.",
@@ -58,6 +60,7 @@ window.PARCOURS.push({
       priere: "Seigneur, apprends-nous à t'aimer de tout notre être, et à aimer les autres comme toi tu les aimes."
     },
     {
+      id: "dieu-3",
       emoji: "🕊️",
       title: "Chercher d'abord son royaume",
       intro: "Jésus ne dit pas que nos besoins ne comptent pas. Il dit : mets Dieu en premier, et fais-lui confiance pour le reste. Un vrai défi pour un couple qui fait des projets.",
@@ -84,6 +87,7 @@ window.PARCOURS.push({
       priere: "Père, tu sais ce dont nous avons besoin. Apprends-nous à te chercher d'abord et à te confier le reste."
     },
     {
+      id: "dieu-4",
       emoji: "🧭",
       title: "Faire confiance",
       intro: "« Ne t'appuie pas sur ta sagesse. » Facile à lire, difficile à vivre, surtout quand on aime tout contrôler. La promesse : Dieu aplanit le chemin.",
@@ -108,6 +112,7 @@ window.PARCOURS.push({
       priere: "Seigneur, nous te confions nos chemins. Aplanis nos sentiers et garde-nous de compter sur nos seules forces."
     },
     {
+      id: "dieu-5",
       emoji: "🌳",
       title: "Ce que Dieu demande",
       intro: "Michée résume tout en trois verbes : pratiquer la justice, aimer la miséricorde, marcher humblement avec Dieu. Et le Psaume 1 montre ce que devient celui qui s'enracine dans sa Parole.",
@@ -134,6 +139,7 @@ window.PARCOURS.push({
       priere: "Seigneur, enracine-nous près de ta source. Apprends-nous la justice, la miséricorde et l'humilité."
     },
     {
+      id: "dieu-6",
       emoji: "🦋",
       title: "Être transformés",
       intro: "Paul ne dit pas « faites des efforts pour paraître chrétiens », mais « laissez-vous transformer ». La vie avec Dieu change notre façon de penser, puis notre façon d'aimer.",
@@ -160,6 +166,7 @@ window.PARCOURS.push({
       priere: "Seigneur, renouvelle notre intelligence. Transforme-nous pour que notre amour soit sans hypocrisie."
     },
     {
+      id: "dieu-7",
       emoji: "💗",
       title: "Aimés pour aimer",
       intro: "Avant tout ce que nous faisons pour Dieu, il y a ce qu'il a fait pour nous. « Nous l'aimons, parce qu'il nous a aimés le premier. » C'est la source de tout amour, y compris le vôtre.",

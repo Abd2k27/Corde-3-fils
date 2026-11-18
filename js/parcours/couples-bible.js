@@ -8,6 +8,7 @@ window.PARCOURS.push({
   desc: "Huit couples, leurs réussites et leurs erreurs : des histoires vraies pour apprendre à aimer.",
   weeks: [
     {
+      id: "couples-1",
       emoji: "⭐",
       title: "Abraham et Sara : croire ensemble l'impossible",
       intro: "Sara rit quand Dieu promet un enfant à un couple âgé. Et pourtant, Dieu tient parole. Leur histoire parle d'attente, de doute… et de fidélité de Dieu.",
@@ -38,6 +39,7 @@ window.PARCOURS.push({
       priere: "Seigneur, rien n'est étonnant de ta part. Fortifie notre foi quand l'attente est longue."
     },
     {
+      id: "couples-2",
       emoji: "🙏",
       title: "Isaac et Rébecca : prier l'un pour l'autre",
       intro: "Isaac prie pour sa femme et Dieu l'exauce. Mais plus tard, chacun préfère un enfant différent, et la famille se divise. Une belle histoire avec un avertissement.",
@@ -62,6 +64,7 @@ window.PARCOURS.push({
       priere: "Seigneur, apprends-nous à prier l'un pour l'autre et garde notre futur foyer de toute division."
     },
     {
+      id: "couples-3",
       emoji: "⏱️",
       title: "Jacob et Rachel : l'amour qui patiente",
       intro: "Jacob travaille sept ans pour épouser Rachel, et ces années lui semblent « quelques jours ». Quand on aime, le temps et les efforts n'ont plus le même poids.",
@@ -85,6 +88,7 @@ window.PARCOURS.push({
       priere: "Seigneur, donne-nous un amour patient, qui ne compte pas ses efforts."
     },
     {
+      id: "couples-4",
       emoji: "🫂",
       title: "Anne et Elkana : se soutenir dans la douleur",
       intro: "Anne souffre de ne pas avoir d'enfant. Elkana l'aime, maladroitement mais sincèrement. Et Anne porte sa peine devant Dieu. Un couple qui traverse l'épreuve.",
@@ -109,6 +113,7 @@ window.PARCOURS.push({
       priere: "Seigneur, nous déchargeons sur toi nos soucis. Apprends-nous à nous consoler l'un l'autre."
     },
     {
+      id: "couples-5",
       emoji: "📜",
       title: "Zacharie et Élisabeth : fidèles ensemble",
       intro: "« Tous deux étaient justes devant Dieu. » Pas un des deux, tous les deux. Fidèles pendant des années de silence, jusqu'au jour où Dieu répond.",
@@ -133,6 +138,7 @@ window.PARCOURS.push({
       priere: "Seigneur, que l'on puisse dire de nous : « tous deux étaient justes devant Dieu »."
     },
     {
+      id: "couples-6",
       emoji: "⭐",
       title: "Joseph et Marie : obéir ensemble",
       intro: "Leurs fiançailles ne se passent pas comme prévu ! Marie dit « qu'il me soit fait selon ta parole », Joseph se réveille et obéit. Un couple qui fait confiance à Dieu quand tout bascule.",
@@ -158,6 +164,7 @@ window.PARCOURS.push({
       priere: "Seigneur, nous sommes tes serviteurs : qu'il nous soit fait selon ta parole."
     },
     {
+      id: "couples-7",
       emoji: "🔁",
       title: "Osée : l'amour qui ne lâche pas",
       intro: "Dieu demande au prophète Osée d'aimer encore une femme qui l'a trahi, pour montrer comment Dieu, lui, aime son peuple infidèle. Un amour fou, qui reflète la grâce.",
@@ -181,6 +188,7 @@ window.PARCOURS.push({
       priere: "Seigneur, merci de nous aimer encore et encore. Rends-nous fidèles comme tu es fidèle."
     },
     {
+      id: "couples-8",
       emoji: "⚠️",
       title: "Ananias et Saphira : le danger de mentir ensemble",
       intro: "Un contre-exemple : ce couple se met d'accord pour faire semblant. Être unis, c'est beau… sauf quand on est unis dans le mensonge. L'unité du couple doit servir la vérité.",

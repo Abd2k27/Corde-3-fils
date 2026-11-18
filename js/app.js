@@ -1,10 +1,13 @@
 (function () {
   const CFG = window.APP_CONFIG, Bible = window.Bible;
-  // Parcours : chaque semaine reçoit un id unique (clé de stockage), son numéro n et son parcours
+  // Parcours : chaque semaine a un id FIXE écrit dans son fichier (clé de stockage de la progression).
+  // On peut donc insérer / réordonner des semaines sans perdre les réponses. Ne jamais changer un id existant.
   const PARCOURS = window.PARCOURS, WEEKS = [], WK = {};
   PARCOURS.forEach((pc) => pc.weeks.forEach((wk, i) => {
     wk.n = i + 1; wk.parcours = pc;
-    wk.id = pc.id === "couple" ? String(i + 1) : `${pc.id}-${i + 1}`; // "couple" garde les anciennes clés
+    if (wk.id == null) { wk.id = `${pc.id}-${i + 1}`; console.warn(`Semaine sans id dans « ${pc.id} » (n°${i + 1}) : ajoute un id fixe.`); }
+    wk.id = String(wk.id);
+    if (WK[wk.id]) console.error(`Id de semaine en double : « ${wk.id} »`);
     WEEKS.push(wk); WK[wk.id] = wk;
   }));
   // Parcours « Nos semaines » : rempli dynamiquement avec les semaines créées par le couple
@@ -42,11 +45,41 @@
   }
   const ui = { step: {}, q: {}, phase: {}, memo: {}, kwTries: {}, revealed: {}, journalTab: "open" };
 
-  function toast(msg) {
+  function toast(msg, ms = 2200) {
     const t = document.getElementById("toast");
     t.textContent = msg; t.classList.add("show");
-    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2200);
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), ms);
   }
+  // ---------- erreurs d'enregistrement ----------
+  // Toutes les écritures passent par Store : on les enveloppe pour ne jamais échouer en silence.
+  const errMsg = (e) => {
+    const c = (e && e.code) || "";
+    if (c.includes("permission-denied")) return "Accès refusé : ce compte ne peut pas enregistrer.";
+    if (c.includes("unavailable") || !navigator.onLine) return "Pas de connexion : rien n'a été enregistré.";
+    if (c.includes("resource-exhausted") || /quota|plein|too large|exceeds/i.test(e && e.message)) return "Trop volumineux : enregistrement impossible.";
+    return "Erreur d'enregistrement : " + ((e && e.message) || "inconnue");
+  };
+  function guardStore(S) {
+    ["set", "remove", "setBlob", "removeBlob"].forEach((m) => {
+      const f = S[m] && S[m].bind(S);
+      if (!f || f._guarded) return;
+      const g = async (...args) => {
+        try { return await f(...args); }
+        catch (e) { console.error(`Store.${m}`, args[0], e); toast("⚠️ " + errMsg(e), 4500); if (e && typeof e === "object") e.shown = true; throw e; }
+      };
+      g._guarded = true; S[m] = g;
+    });
+  }
+  window.addEventListener("unhandledrejection", (ev) => {
+    const e = ev.reason; if (e && e.shown) { ev.preventDefault(); return; }
+    console.error(e); toast("⚠️ " + errMsg(e), 4500);
+  });
+  const netBanner = () => document.body.classList.toggle("offline", !navigator.onLine);
+  window.addEventListener("online", () => { netBanner(); toast("De nouveau en ligne ✓"); });
+  window.addEventListener("offline", netBanner);
+  window.addEventListener("store-pending", () => toast("⏳ Connexion lente : l'envoi se terminera dès que le réseau revient. Garde la page ouverte.", 5000));
+  window.addEventListener("store-synced", () => toast("Enregistré ✓"));
+  window.addEventListener("store-error", (ev) => toast("⚠️ " + errMsg(ev.detail), 5000));
   function confetti() {
     const colors = ["#b5562f", "#3f6b4f", "#d8a24a", "#e8b4a0", "#7fa88d"];
     for (let i = 0; i < 60; i++) {
@@ -337,7 +370,7 @@
     $app.innerHTML = `
       <header class="top">
         <div><div class="eyebrow">Bonjour ${esc(P(me).name)}</div><h1 class="h-title">${esc(CFG.appName)}</h1></div>
-        <div class="row tight"><button class="icon-btn" onclick="location.hash='#/guide'" title="Comment ça marche ?">?</button><div class="duo">${avatar("a")}${avatar("b")}</div></div>
+        <div class="row tight"><button class="icon-btn" onclick="location.hash='#/guide'" title="Comment ça marche ?" aria-label="Comment ça marche ?">?</button><div class="duo">${avatar("a")}${avatar("b")}</div></div>
       </header>
       ${notifs.join("")}
       ${soirCardHTML(todayStr(), true)}
@@ -406,7 +439,7 @@
     const step = ui.step[w];
     $app.innerHTML = `
       <header class="top slim">
-        <button class="icon-btn" onclick="location.hash='#/'">←</button>
+        <button class="icon-btn" onclick="location.hash='#/'" aria-label="Retour">←</button>
         <div class="grow"><div class="eyebrow">${esc(wk.parcours.short)} · S${wk.n} · ${STEPS[step]}</div><strong>${esc(wk.title)}</strong></div>
       </header>
       <nav class="steps">${STEPS.map((s, i) => `<button class="dot ${i === step ? "on" : ""} ${i < step ? "past" : ""}" data-s="${i}" title="${s}"></button>`).join("")}</nav>
@@ -725,7 +758,7 @@
     const all = Store.list("prayers/").map((x) => ({ id: x.path.split("/")[1], ...x.value })).sort((a, b) => b.at - a.at);
     const tab = ui.journalTab, list = all.filter((p) => (tab === "open" ? !p.answered : p.answered));
     $app.innerHTML = `
-      <header class="top slim"><button class="icon-btn" onclick="location.hash='#/plus'">←</button><div class="grow"><div class="eyebrow">Ensemble</div><strong>Journal de prière</strong></div></header>
+      <header class="top slim"><button class="icon-btn" onclick="location.hash='#/plus'" aria-label="Retour">←</button><div class="grow"><div class="eyebrow">Ensemble</div><strong>Journal de prière</strong></div></header>
       <section class="card">
         <textarea id="pr" rows="3" placeholder="Une intention de prière, un sujet de reconnaissance…"></textarea>
         <button class="btn full" id="add">Ajouter</button>
@@ -758,7 +791,7 @@
   const listOf = (prefix) => Store.list(prefix).map((x) => ({ id: x.path.slice(prefix.length), ...x.value }));
   const pageHead = (eyebrow, title, back) => `
     <header class="top ${back ? "slim" : ""}">
-      ${back ? `<button class="icon-btn" onclick="location.hash='${back}'">←</button>` : ""}
+      ${back ? `<button class="icon-btn" onclick="location.hash='${back}'" aria-label="Retour">←</button>` : ""}
       <div class="grow"><div class="eyebrow">${eyebrow}</div><h1 class="h-title">${title}</h1></div>
     </header>`;
 
@@ -772,7 +805,7 @@
   function nav(active) {
     const b = navBadges();
     return `<div class="nav-space"></div><nav class="bottom-nav">${NAV.map(([id, h, ic, l]) =>
-      `<a href="${h}" class="${id === active ? "on" : ""}"><span class="ni">${ic}${b[id] ? '<i class="dot-badge"></i>' : ""}</span><span>${l}</span></a>`).join("")}</nav>`;
+      `<a href="${h}" class="${id === active ? "on" : ""}"${id === active ? ' aria-current=page' : ""}><span class="ni">${ic}${b[id] ? '<i class="dot-badge"></i>' : ""}</span><span>${l}</span></a>`).join("")}</nav>`;
   }
 
   // ---------- 🌙 Question du jour ----------
@@ -1101,10 +1134,12 @@
       <footer class="foot small muted">
         Joueur : <strong>${esc(P(me).name)}</strong> · ${FB ? `<a href="#" id="logout">se déconnecter</a>` : `<a href="#/joueur">changer</a>`}
         ${Store.mode === "local" ? ` · <a href="#" id="reset">réinitialiser (test)</a>` : ""}
+        <div><a href="#" id="export">💾 Télécharger une sauvegarde de nos données</a></div>
         <div>Texte biblique : Louis Segond 1910</div>
       </footer>` + nav("plus");
     const lo = document.getElementById("logout");
     if (lo) lo.onclick = (e) => { e.preventDefault(); Store.signOut(); };
+    document.getElementById("export").onclick = (e) => { e.preventDefault(); exportData(); };
     const rs = document.getElementById("reset");
     if (rs) rs.onclick = async (e) => {
       e.preventDefault();
@@ -1113,6 +1148,23 @@
       Object.keys(localStorage).filter((k) => k.startsWith("bc-draft-") || k.startsWith("bc-blob-")).forEach((k) => localStorage.removeItem(k));
       go("#/"); render();
     };
+  }
+
+  // Sauvegarde JSON de toutes les données partagées (+ photos si demandé)
+  async function exportData() {
+    const out = { app: CFG.appName, exportedAt: new Date().toISOString(), data: {} };
+    Store.list("").forEach(({ path, value }) => { out.data[path] = value; });
+    const ids = Store.list("story/").filter((x) => x.value && x.value.hasPhoto).map((x) => x.path.slice(6));
+    if (ids.length && confirm(`Inclure les ${ids.length} photo(s) ? (fichier plus lourd)`)) {
+      toast("Récupération des photos…");
+      out.photos = {};
+      for (const id of ids) { try { out.photos[id] = await Store.getBlob(id); } catch (e) { console.warn("photo", id, e); } }
+    }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: "application/json" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: `corde-a-trois-fils-${new Date().toISOString().slice(0, 10)}.json` });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast("Sauvegarde téléchargée 💾");
   }
 
   // ---------- ✨ Créer une semaine ----------
@@ -1262,6 +1314,7 @@
   // ---------- démarrage ----------
   function boot() {
     Store = window.Store;
+    guardStore(Store); netBanner();
     Store.subscribe(onStoreChange);
     Store.init().then(render);
   }

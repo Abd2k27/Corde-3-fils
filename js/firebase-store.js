@@ -18,6 +18,15 @@ if (CFG.mode === "firebase" && CFG.firebaseConfig) {
   let data = {}, unsub = null;
   const subs = [];
   const emit = (reason) => subs.forEach((f) => f(reason));
+  // Hors ligne, Firestore met l'écriture en file d'attente sans jamais répondre : on n'attend pas plus de 8 s
+  // pour ne pas bloquer l'interface, et on prévient l'appli (événements store-pending / store-synced / store-error).
+  const signal = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }));
+  const write = (p) => new Promise((res, rej) => {
+    let late = false;
+    const t = setTimeout(() => { late = true; signal("store-pending"); res(); }, 8000);
+    p.then(() => { clearTimeout(t); if (late) signal("store-synced"); res(); },
+      (e) => { clearTimeout(t); if (late) signal("store-error", e); else rej(e); });
+  });
 
   const Store = {
     mode: "firebase",
@@ -51,15 +60,15 @@ if (CFG.mode === "firebase" && CFG.firebaseConfig) {
     list(prefix) { return Object.keys(data).filter((k) => k.startsWith(prefix)).map((k) => ({ path: k, value: data[k] })); },
     async set(path, value) {
       data[path] = clean(value);
-      await setDoc(doc(db, "kv", idOf(path)), { path, v: clean(value), at: Date.now() });
+      await write(setDoc(doc(db, "kv", idOf(path)), { path, v: clean(value), at: Date.now() }));
     },
-    async remove(path) { delete data[path]; await deleteDoc(doc(db, "kv", idOf(path))); },
+    async remove(path) { delete data[path]; await write(deleteDoc(doc(db, "kv", idOf(path)))); },
     subscribe(fn) { subs.push(fn); },
     async reset() { /* désactivé en mode Firebase */ },
     // Photos : collection "blobs" séparée, chargée à la demande (Firebase Storage exige le forfait Blaze)
     async getBlob(id) { const d = await getDoc(doc(db, "blobs", id)); return d.exists() ? d.data().data : null; },
-    async setBlob(id, v) { await setDoc(doc(db, "blobs", id), { data: v, at: Date.now() }); },
-    async removeBlob(id) { await deleteDoc(doc(db, "blobs", id)); },
+    async setBlob(id, v) { await write(setDoc(doc(db, "blobs", id), { data: v, at: Date.now() })); },
+    async removeBlob(id) { await write(deleteDoc(doc(db, "blobs", id))); },
     signIn() { return signInWithPopup(auth, new GoogleAuthProvider()); },
     signOut() { return signOut(auth); }
   };

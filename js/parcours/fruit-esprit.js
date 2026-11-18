@@ -8,6 +8,7 @@ window.PARCOURS.push({
   desc: "Neuf qualités que l'Esprit fait grandir en nous (Galates 5:22-23), une par semaine, vécues dans le couple.",
   weeks: [
     {
+      id: "fruit-1",
       emoji: "❤️",
       title: "L'amour",
       intro: "Le fruit de l'Esprit est au singulier : c'est un seul fruit avec neuf saveurs, et l'amour vient en premier. Jésus en fait le signe distinctif de ses disciples.",
@@ -34,6 +35,7 @@ window.PARCOURS.push({
       priere: "Saint-Esprit, fais grandir ton fruit en nous, à commencer par l'amour."
     },
     {
+      id: "fruit-2",
       emoji: "😄",
       title: "La joie",
       intro: "La joie biblique n'est pas l'absence de problèmes. C'est une force qui vient de Dieu : « la joie de l'Éternel sera votre force ».",
@@ -61,6 +63,7 @@ window.PARCOURS.push({
       priere: "Seigneur, que ta joie soit notre force, dans les bons jours comme dans les difficiles."
     },
     {
+      id: "fruit-3",
       emoji: "🕊️",
       title: "La paix",
       intro: "Paul promet une paix « qui surpasse toute intelligence », qui garde nos cœurs. Et Jésus appelle heureux ceux qui procurent la paix, y compris dans leur couple.",
@@ -89,6 +92,7 @@ window.PARCOURS.push({
       priere: "Seigneur, garde nos cœurs dans ta paix. Fais de nous des artisans de paix."
     },
     {
+      id: "fruit-4",
       emoji: "🌾",
       title: "La patience",
       intro: "Le laboureur attend la pluie sans s'énerver contre le ciel. La patience, c'est savoir attendre… et se supporter l'un l'autre avec amour.",
@@ -118,6 +122,7 @@ window.PARCOURS.push({
       priere: "Seigneur, donne-nous la patience du laboureur, et apprends-nous à nous supporter avec amour."
     },
     {
+      id: "fruit-5",
       emoji: "🎁",
       title: "La bonté",
       intro: "La bonté va plus loin que la politesse : faire du bien sans rien attendre, comme Dieu qui est bon même pour les ingrats. Elle commence souvent à la maison.",
@@ -141,6 +146,7 @@ window.PARCOURS.push({
       priere: "Père, tu es bon envers tous. Rends-nous bons et miséricordieux comme toi."
     },
     {
+      id: "fruit-6",
       emoji: "🌿",
       title: "La bénignité (la bienveillance)",
       intro: "La bénignité, c'est la bienveillance : une douceur active qui met l'autre à l'aise. Boaz en est un bel exemple : il accueille Ruth l'étrangère avec respect et générosité.",
@@ -167,6 +173,7 @@ window.PARCOURS.push({
       priere: "Seigneur, que nos paroles soient pleines de grâce, et nos cœurs ouverts aux autres."
     },
     {
+      id: "fruit-7",
       emoji: "🌅",
       title: "La fidélité",
       intro: "La fidélité de Dieu se renouvelle chaque matin. La nôtre se construit dans les petites choses : tenir ses promesses, même les plus simples.",
@@ -192,6 +199,7 @@ window.PARCOURS.push({
       priere: "Seigneur, ta fidélité est grande. Rends-nous fidèles dans les petites choses comme dans les grandes."
     },
     {
+      id: "fruit-8",
       emoji: "🪶",
       title: "La douceur",
       intro: "La douceur n'est pas de la faiblesse : c'est de la force maîtrisée. Jésus appelle heureux les « débonnaires », et Paul demande de corriger avec douceur.",
@@ -219,6 +227,7 @@ window.PARCOURS.push({
       priere: "Seigneur Jésus, toi qui es doux et humble de cœur, rends-nous doux l'un envers l'autre."
     },
     {
+      id: "fruit-9",
       emoji: "🧘",
       title: "La tempérance (la maîtrise de soi)",
       intro: "Le dernier fruit est la maîtrise de soi. Sans elle, dit Proverbes, on est comme une ville sans murailles. Avec elle, on vaut mieux qu'un héros.",
