@@ -3,7 +3,7 @@ window.APP_CONFIG = {
   appName: "La corde à trois fils",
   players: {
     a: { name: "Abdou", initial: "A", color: "#3f6b4f" },
-    b: { name: "Ma chérie", initial: "♥", color: "#b5562f" }
+    b: { name: "Binusè", initial: "B", color: "#b5562f" }
   },
   // "local" = données dans le navigateur (test sur ton Mac)
   // "firebase" = plus tard, pour jouer chacun sur son téléphone
