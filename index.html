@@ -9,7 +9,9 @@
     // Applique le thème avant l'affichage (évite un flash clair en mode sombre). Même logique que applyTheme() dans app.js
     (function () { var t = "auto"; try { t = localStorage.getItem("bc-theme") || "auto"; } catch (e) {}
       var h = new Date().getHours(), d = t === "dark" || (t === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) || (t === "soir" && (h >= 20 || h < 7));
-      document.documentElement.setAttribute("data-theme", d ? "dark" : "light"); })();
+      document.documentElement.setAttribute("data-theme", d ? "dark" : "light");
+      var l = null; try { l = localStorage.getItem("bc-lite"); } catch (e) {}
+      if (l === "1" || (l === null && window.matchMedia && matchMedia("(prefers-reduced-transparency: reduce)").matches)) document.documentElement.classList.add("lite"); })();
   </script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Corde à 3 fils">
@@ -37,7 +39,29 @@
   <script src="js/plans.js"></script>
   <script src="js/store.js"></script>
   <script src="js/bible.js"></script>
-  <script src="js/app.js"></script>
+  <!-- Application : fichiers partageant la même portée globale, chargés dans cet ordre (démarrage en dernier) -->
+  <script src="js/app/base.js"></script>
+  <script src="js/app/erreurs.js"></script>
+  <script src="js/app/donnees.js"></script>
+  <script src="js/app/routeur.js"></script>
+  <script src="js/app/connexion.js"></script>
+  <script src="js/app/accueil.js"></script>
+  <script src="js/app/semaine.js"></script>
+  <script src="js/app/audio.js"></script>
+  <script src="js/app/journal.js"></script>
+  <script src="js/app/navigation.js"></script>
+  <script src="js/app/question-du-jour.js"></script>
+  <script src="js/app/promesses.js"></script>
+  <script src="js/app/lettres.js"></script>
+  <script src="js/app/histoire.js"></script>
+  <script src="js/app/bilan.js"></script>
+  <script src="js/app/plus.js"></script>
+  <script src="js/app/lecture.js"></script>
+  <script src="js/app/bocal.js"></script>
+  <script src="js/app/dates.js"></script>
+  <script src="js/app/theme.js"></script>
+  <script src="js/app/creer.js"></script>
+  <script src="js/app/demarrage.js"></script>
   <script type="module" src="js/firebase-store.js"></script>
 </body>
 </html>

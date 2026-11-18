@@ -1,0 +1,12 @@
+{
+  "name": "corde-a-trois-fils",
+  "private": true,
+  "description": "La corde à trois fils — site statique (aucune étape de build). Ce fichier ne sert qu'aux tests.",
+  "scripts": {
+    "test": "playwright test",
+    "serve": "node tests/serve.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
+  }
+}

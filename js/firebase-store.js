@@ -7,18 +7,22 @@ if (CFG.mode === "firebase" && CFG.firebaseConfig) {
   const base = "https://www.gstatic.com/firebasejs/10.12.2/";
   const { initializeApp } = await import(base + "firebase-app.js");
   const { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import(base + "firebase-auth.js");
-  const { getFirestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot } = await import(base + "firebase-firestore.js");
+  const { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot } = await import(base + "firebase-firestore.js");
 
   const app = initializeApp(CFG.firebaseConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  // Cache local persistant (IndexedDB) : les données s'affichent tout de suite au démarrage, restent lisibles hors ligne,
+  // et les modifications faites hors ligne sont gardées puis envoyées au retour du réseau (même après fermeture de la page).
+  let db;
+  try { db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+  catch (e) { console.warn("Cache hors ligne Firestore indisponible :", e.message); db = getFirestore(app); }
   const idOf = (p) => p.replace(/\//g, "__");
   const clean = (v) => JSON.parse(JSON.stringify(v ?? null)); // Firestore refuse "undefined"
 
   let data = {}, unsub = null;
   const subs = [];
   const emit = (reason) => subs.forEach((f) => f(reason));
-  // Hors ligne, Firestore met l'écriture en file d'attente sans jamais répondre : on n'attend pas plus de 8 s
+  // Hors ligne, Firestore garde l'écriture (cache local) mais sa promesse ne se résout qu'au retour du réseau : on n'attend pas plus de 8 s
   // pour ne pas bloquer l'interface, et on prévient l'appli (événements store-pending / store-synced / store-error).
   const signal = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }));
   const write = (p) => new Promise((res, rej) => {
