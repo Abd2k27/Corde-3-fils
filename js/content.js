@@ -3,7 +3,14 @@
 // Numéros de livres (pour l'API getBible) : Genèse 1, Deutéronome 5, Josué 6, Ruth 8, Psaumes 19,
 // Proverbes 20, Ecclésiaste 21, Matthieu 40, Actes 44, 1 Corinthiens 46, Éphésiens 49, Colossiens 51, Jacques 59
 
-window.WEEKS = [
+window.PARCOURS = window.PARCOURS || [];
+window.PARCOURS.push({
+  id: "couple",
+  emoji: "💞",
+  title: "Couple, mariage & foyer",
+  short: "Couple",
+  desc: "Les grands textes sur le couple : le plan de Dieu, l'amour, le pardon, l'alliance et le foyer.",
+  weeks: [
   {
     id: 1,
     emoji: "🌱",
@@ -223,4 +230,5 @@ window.WEEKS = [
     defi: "Choisissez ensemble un verset « pour votre couple » et affichez-le (fond d'écran, post-it, cadre…).",
     priere: "Seigneur, que notre couple et notre futur foyer te servent. Ouvre notre cœur et notre maison aux autres."
   }
-];
+]
+});

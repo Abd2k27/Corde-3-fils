@@ -1,5 +1,15 @@
 (function () {
-  const CFG = window.APP_CONFIG, WEEKS = window.WEEKS, Bible = window.Bible;
+  const CFG = window.APP_CONFIG, Bible = window.Bible;
+  // Parcours : chaque semaine reçoit un id unique (clé de stockage), son numéro n et son parcours
+  const PARCOURS = window.PARCOURS, WEEKS = [], WK = {};
+  PARCOURS.forEach((pc) => pc.weeks.forEach((wk, i) => {
+    wk.n = i + 1; wk.parcours = pc;
+    wk.id = pc.id === "couple" ? String(i + 1) : `${pc.id}-${i + 1}`; // "couple" garde les anciennes clés
+    WEEKS.push(wk); WK[wk.id] = wk;
+  }));
+  let curP = localStorage.getItem("bc-parcours");
+  if (!PARCOURS.find((x) => x.id === curP)) curP = PARCOURS[0].id;
+  const weekLabel = (wk) => `${wk.parcours.short} · semaine ${wk.n}`;
   let Store = window.Store; // remplacé par FirebaseStore au démarrage en mode firebase
   const FB = CFG.mode === "firebase";
   const $app = document.getElementById("app");
@@ -50,7 +60,9 @@
     const a = prog(w, me), b = prog(w, other(me));
     return { mine: !!a.submitted, theirs: !!b.submitted, both: !!(a.submitted && b.submitted), started: Object.keys(a).length > 0 };
   }
-  const unlocked = (w) => CFG.unlockAll || w === 1 || weekState(w - 1).both;
+  const unlocked = (w) => { const wk = WK[w]; return !!wk && (CFG.unlockAll || wk.n === 1 || weekState(wk.parcours.weeks[wk.n - 2].id).both); };
+  function parcoursDone(pc) { return pc.weeks.filter((wk) => weekState(wk.id).both).length; }
+  function piecesBuilt(pc) { const d = parcoursDone(pc); return d >= pc.weeks.length ? 7 : Math.floor((d / pc.weeks.length) * 7); }
 
   function guessScore(q, guess, actual) {
     if (guess == null || actual == null) return 0;
@@ -58,7 +70,7 @@
     return guess === actual ? 10 : 0;
   }
   function weekPoints(w) {
-    const wk = WEEKS[w - 1], pts = { a: 0, b: 0, bonus: 0 };
+    const wk = WK[w], pts = { a: 0, b: 0, bonus: 0 };
     const pa = prog(w, "a"), pb = prog(w, "b");
     for (const u of ["a", "b"]) {
       const p = u === "a" ? pa : pb, o = u === "a" ? pb : pa;
@@ -129,7 +141,7 @@
     if (!me) return renderPlayer();
     const r = parseRoute();
     if (!localStorage.getItem(GUIDE_KEY)) return go("#/guide");
-    if (r.name === "semaine") return renderWeek(+r.arg);
+    if (r.name === "semaine") return renderWeek(r.arg);
     if (r.name === "journal") return renderJournal();
     if (r.name === "joueur") return renderPlayer();
     return renderHome();
@@ -139,7 +151,7 @@
   function onStoreChange(reason) {
     if (reason === "auth") return render();
     const r = parseRoute();
-    if (r.name === "home" || r.name === "journal" || (r.name === "semaine" && [4, 5].includes(ui.step[+r.arg]))) {
+    if (r.name === "home" || r.name === "journal" || (r.name === "semaine" && [4, 5].includes(ui.step[r.arg]))) {
       if (document.activeElement && ["TEXTAREA", "INPUT"].includes(document.activeElement.tagName)) return;
       render();
     }
@@ -152,7 +164,9 @@
   const GUIDE = [
     { icon: "🪢", title: "Bienvenue !", html: `
         <p><strong>La corde à trois fils</strong>, c'est vous deux… et Dieu au milieu.</p>
-        <p>Chaque semaine, un thème biblique sur le couple, le mariage ou le foyer, sous forme de jeu : environ <strong>15 minutes</strong>, ensemble ou chacun de son côté.</p>
+        <p>Chaque semaine, un thème biblique sous forme de jeu : environ <strong>15 minutes</strong>, ensemble ou chacun de son côté.</p>
+        <p><strong>${PARCOURS.length} parcours, ${WEEKS.length} semaines</strong> : de quoi grandir ensemble pendant un an.</p>
+        <ul class="g-tips">${PARCOURS.map((x) => `<li>${x.emoji} ${esc(x.title)} <span class="muted">(${x.weeks.length})</span></li>`).join("")}</ul>
         <p class="small muted">Faites défiler pour découvrir comment ça marche →</p>` },
     { icon: "📅", title: "Une session en 6 étapes", html: `
         <ol class="g-steps">
@@ -176,7 +190,7 @@
           <tr><td>Défi relevé</td><td>+10</td></tr>
           <tr><td>Semaine finie à deux</td><td>+20</td></tr>
         </table>
-        <p>Chaque semaine terminée <strong>ensemble</strong> ajoute une pièce à votre maison et débloque la suivante.</p>
+        <p>Chaque parcours a sa maison : chaque semaine terminée <strong>ensemble</strong> la fait avancer et débloque la suivante. Vous pouvez mener plusieurs parcours en parallèle.</p>
         <p>🔥 La <strong>série</strong> monte si vous enchaînez les semaines (au plus 10 jours entre deux).</p>` },
     { icon: "🃏", title: "Joker et journal de prière", html: `
         <p><strong>🃏 Carte Joker</strong> : une fois par semaine, chacun peut poser <em>sa propre question</em> à l'autre.</p>
@@ -248,7 +262,7 @@
           <div class="logo">🪢</div>
           <h1>${esc(CFG.appName)}</h1>
           <p class="hero-verse">« La corde à trois fils ne se rompt pas facilement. »<br><span>Ecclésiaste 4:12</span></p>
-          <p class="hero-sub">Une étude biblique en forme de jeu, pour grandir à deux dans la foi. Quinze minutes par semaine.</p>
+          <p class="hero-sub">Une étude biblique en forme de jeu, pour grandir à deux dans la foi. ${PARCOURS.length} parcours, ${WEEKS.length} semaines, quinze minutes par semaine.</p>
           <button class="btn" id="login">Se connecter avec Google</button>
           <p class="small warn" id="err"></p>
         </section>
@@ -279,13 +293,13 @@
 
   // ---------- écran : accueil ----------
   function renderHome() {
-    const t = totals(), s = streak(), o = other(me);
+    const t = totals(), s = streak(), o = other(me), pc = PARCOURS.find((x) => x.id === curP), built = piecesBuilt(pc), done = parcoursDone(pc);
     const notifs = [];
     WEEKS.forEach((wk) => {
       const st = weekState(wk.id);
-      if (unlocked(wk.id) && st.theirs && !st.mine) notifs.push(`<a href="#/semaine/${wk.id}" class="notif">${avatar(o, "sm")} ${esc(P(o).name)} a fini la semaine ${wk.id}, à toi de jouer !</a>`);
+      if (unlocked(wk.id) && st.theirs && !st.mine) notifs.push(`<a href="#/semaine/${wk.id}" class="notif">${avatar(o, "sm")} ${esc(P(o).name)} a fini « ${esc(weekLabel(wk))} », à toi de jouer !</a>`);
       const jk = Store.get(`joker/${wk.id}/${o}`);
-      if (jk && jk.q && !jk.a) notifs.push(`<a href="#/semaine/${wk.id}" class="notif">🃏 ${esc(P(o).name)} t'a posé une question Joker (semaine ${wk.id})</a>`);
+      if (jk && jk.q && !jk.a) notifs.push(`<a href="#/semaine/${wk.id}" class="notif">🃏 ${esc(P(o).name)} t'a posé une question Joker (${esc(weekLabel(wk))})</a>`);
     });
 
     $app.innerHTML = `
@@ -294,19 +308,26 @@
         <div class="row tight"><button class="icon-btn" onclick="location.hash='#/guide'" title="Comment ça marche ?">?</button><div class="duo">${avatar("a")}${avatar("b")}</div></div>
       </header>
       ${notifs.join("")}
+
+      <h2 class="section">Parcours</h2>
+      <div class="parcours-bar">
+        ${PARCOURS.map((x) => { const d = parcoursDone(x); return `<button class="pc ${x.id === curP ? "on" : ""}" data-pc="${x.id}">
+          <span class="pc-emoji">${x.emoji}</span><strong>${esc(x.title)}</strong>
+          <span class="pc-prog"><span style="width:${Math.round((d / x.weeks.length) * 100)}%"></span></span>
+          <span class="small muted">${d}/${x.weeks.length} semaines</span></button>`; }).join("")}
+      </div>
+      <p class="pc-desc">${pc.emoji} <strong>${esc(pc.title)}</strong> — ${esc(pc.desc)}</p>
       <section class="card house-card">
-        ${houseSVG(t.built)}
+        ${houseSVG(built)}
         <div class="house-meta">
-          <div><strong>${t.built}/7</strong><span>maison</span></div>
+          <div><strong>${done}/${pc.weeks.length}</strong><span>semaines</span></div>
           <div><strong>${t.total}</strong><span>points</span></div>
           <div><strong>${s} 🔥</strong><span>série</span></div>
         </div>
-        <p class="small muted center-text">${t.built < 7 ? `Prochaine pièce : ${PIECES[t.built]}` : "Votre maison est bâtie sur le roc 🙌"} · Matthieu 7:24</p>
+        <p class="small muted center-text">${built < 7 ? `Prochaine pièce : ${PIECES[built]}` : "Cette maison est bâtie sur le roc 🙌"} · Matthieu 7:24</p>
       </section>
-
-      <h2 class="section">Parcours : couple, mariage & foyer</h2>
       <div class="weeks">
-        ${WEEKS.map((wk) => {
+        ${pc.weeks.map((wk) => {
           const st = weekState(wk.id), open = unlocked(wk.id);
           let chip = `<span class="chip">À faire</span>`;
           if (!open) chip = `<span class="chip lock">🔒</span>`;
@@ -316,7 +337,7 @@
           else if (st.started) chip = `<span class="chip">En cours</span>`;
           return `<button class="week ${open ? "" : "locked"}" ${open ? `data-w="${wk.id}"` : "disabled"}>
             <span class="week-emoji">${wk.emoji}</span>
-            <span class="week-txt"><span class="eyebrow">Semaine ${wk.id}</span><strong>${esc(wk.title)}</strong><span class="small muted">${wk.passages.map((p) => esc(p.ref)).join(" · ")}</span></span>
+            <span class="week-txt"><span class="eyebrow">Semaine ${wk.n}</span><strong>${esc(wk.title)}</strong><span class="small muted">${wk.passages.map((p) => esc(p.ref)).join(" · ")}</span></span>
             ${chip}
           </button>`;
         }).join("")}
@@ -329,6 +350,8 @@
         <div>Texte biblique : Louis Segond 1910</div>
       </footer>`;
     $app.querySelectorAll(".week[data-w]").forEach((b) => b.onclick = () => go(`#/semaine/${b.dataset.w}`));
+    $app.querySelectorAll("[data-pc]").forEach((b) => b.onclick = () => { curP = b.dataset.pc; localStorage.setItem("bc-parcours", curP); renderHome(); });
+    const on = $app.querySelector(".pc.on"); if (on) on.scrollIntoView({ inline: "center", block: "nearest" });
     const lo = document.getElementById("logout");
     if (lo) lo.onclick = (e) => { e.preventDefault(); Store.signOut(); };
     const rs = document.getElementById("reset");
@@ -345,8 +368,9 @@
   const STEPS = ["Carte", "Lecture", "Mémo", "Questions", "Révélation", "Défi"];
 
   function renderWeek(w) {
-    const wk = WEEKS[w - 1];
+    const wk = WK[w];
     if (!wk || !unlocked(w)) return go("#/");
+    if (curP !== wk.parcours.id) { curP = wk.parcours.id; localStorage.setItem("bc-parcours", curP); }
     if (ui.step[w] == null) {
       const st = weekState(w);
       ui.step[w] = st.mine ? 4 : prog(w, me).memoDone ? 3 : prog(w, me).kwDone ? 2 : prog(w, me).seen ? 1 : 0;
@@ -355,7 +379,7 @@
     $app.innerHTML = `
       <header class="top slim">
         <button class="icon-btn" onclick="location.hash='#/'">←</button>
-        <div class="grow"><div class="eyebrow">Semaine ${w} · ${STEPS[step]}</div><strong>${esc(wk.title)}</strong></div>
+        <div class="grow"><div class="eyebrow">${esc(wk.parcours.short)} · S${wk.n} · ${STEPS[step]}</div><strong>${esc(wk.title)}</strong></div>
       </header>
       <nav class="steps">${STEPS.map((s, i) => `<button class="dot ${i === step ? "on" : ""} ${i < step ? "past" : ""}" data-s="${i}" title="${s}"></button>`).join("")}</nav>
       <main id="stepBody"></main>`;
@@ -372,7 +396,7 @@
   function stepCard(wk, el) {
     el.innerHTML = `
       <div class="flip-wrap"><div class="flip" id="flip">
-        <div class="face front"><div class="big-emoji">${wk.emoji}</div><div class="eyebrow">Semaine ${wk.id}</div><p>Touche la carte pour la retourner</p></div>
+        <div class="face front"><div class="big-emoji">${wk.emoji}</div><div class="eyebrow">${esc(wk.parcours.title)} · semaine ${wk.n}</div><p>Touche la carte pour la retourner</p></div>
         <div class="face back"><h2>${esc(wk.title)}</h2><p>${esc(wk.intro)}</p><p class="small muted">${wk.passages.map((p) => esc(p.ref)).join(" · ")}</p></div>
       </div></div>
       <button class="btn full" id="nx" disabled>Lire le passage →</button>`;
@@ -667,7 +691,7 @@
       <div class="tabs"><button class="${tab === "open" ? "on" : ""}" data-t="open">En prière (${all.filter((p) => !p.answered).length})</button><button class="${tab === "done" ? "on" : ""}" data-t="done">Exaucées 🙌 (${all.filter((p) => p.answered).length})</button></div>
       ${list.length ? list.map((p) => `
         <article class="card prayer-item ${p.answered ? "answered" : ""}">
-          <div class="pi-head">${avatar(p.by, "sm")}<span class="small muted">${esc(P(p.by).name)} · ${fmtDate(p.at)}${p.week ? ` · semaine ${p.week}` : ""}</span></div>
+          <div class="pi-head">${avatar(p.by, "sm")}<span class="small muted">${esc(P(p.by).name)} · ${fmtDate(p.at)}${p.week != null && WK[p.week] ? ` · ${esc(weekLabel(WK[p.week]))}` : ""}</span></div>
           <p>${esc(p.text)}</p>
           ${p.answered ? `<p class="small ok">Exaucée le ${fmtDate(p.answeredAt)} 🙌</p>` : `<button class="link" data-done="${p.id}">Marquer comme exaucée</button>`}
         </article>`).join("") : `<p class="muted center-text">${tab === "open" ? "Aucune intention pour l'instant." : "Les prières exaucées apparaîtront ici."}</p>`}`;
