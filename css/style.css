@@ -166,3 +166,31 @@ textarea:focus, input:focus { outline: none; border-color: var(--accent); }
 @keyframes slide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+/* accueil (non connecté) */
+.landing { padding-top: 4vh; }
+.hero { text-align: center; padding: 10px 6px 4px; }
+.hero h1 { font-size: 2rem; }
+.hero-verse { font-family: Lora, Georgia, serif; font-style: italic; font-size: 1.05rem; margin: 6px 0 14px; }
+.hero-verse span { font-style: normal; font-size: .8rem; color: var(--muted); }
+.hero-sub { color: var(--muted); margin: 0 auto 18px; max-width: 380px; }
+.features { display: grid; gap: 10px; margin: 22px 0 6px; }
+.feat { display: flex; gap: 14px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.feat > span { font-size: 1.7rem; line-height: 1; margin-top: 2px; }
+.feat p { margin: 2px 0 0; font-size: .9rem; color: var(--muted); }
+.row.tight { margin: 0; flex-wrap: nowrap; }
+
+/* guide */
+.guide { padding-top: 2vh; }
+.guide .slide { min-height: 420px; animation: slide .35s ease; text-align: left; }
+.guide .slide .big-emoji, .guide .slide h2 { text-align: center; }
+.g-steps { padding-left: 0; list-style: none; counter-reset: s; margin: 0; }
+.g-steps li { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .95rem; }
+.g-steps li:last-child { border: 0; }
+.g-table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: .93rem; }
+.g-table td { padding: 7px 4px; border-bottom: 1px solid var(--line); }
+.g-table td:last-child { text-align: right; font-weight: 700; color: var(--green); }
+.g-tips { padding-left: 18px; margin: 0; } .g-tips li { margin: 8px 0; }
+.g-dots { display: flex; justify-content: center; gap: 7px; margin: 14px 0 4px; }
+.g-dots button { width: 9px; height: 9px; border-radius: 50%; border: 0; padding: 0; background: var(--line); cursor: pointer; }
+.g-dots button.on { background: var(--accent); width: 24px; border-radius: 99px; }
