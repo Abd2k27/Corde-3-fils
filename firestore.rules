@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ✏️ Remplace par vos 2 adresses Google (en minuscules)
+    function estLeCouple() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['ton.adresse@gmail.com', 'son.adresse@gmail.com'];
+    }
+    match /kv/{id} {
+      allow read, write: if estLeCouple();
+    }
+  }
+}
