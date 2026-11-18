@@ -1105,7 +1105,7 @@
         <img id="sPrev" class="m-photo" hidden alt="">
         <div class="row between"><button class="btn ghost sm" id="sCancel">Annuler</button><button class="btn sm" id="sSave">Enregistrer</button></div>
       </section>` : `<button class="btn full" id="sNew">+ Ajouter un moment</button>`) + `
-      <div class="timeline">${timeline || `<p class="muted center-text small" style="margin-top:20px">Votre histoire commence ici : ajoutez votre rencontre, vos premières fois, vos prières exaucées…</p>`}</div>` + nav("histoire");
+      ${timeline ? `<div class="timeline">${timeline}</div>` : `<p class="muted center-text small" style="margin-top:20px">Votre histoire commence ici : ajoutez votre rencontre, vos premières fois, vos prières exaucées…</p>`}` + nav("histoire");
 
     const nw = $app.querySelector("#sNew"); if (nw) nw.onclick = () => { ui.storyForm = { emoji: "💞" }; renderHistoire(); };
     if (f) {
