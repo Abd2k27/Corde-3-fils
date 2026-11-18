@@ -196,15 +196,19 @@
     if (r.name === "bilan") return renderBilan(r.arg);
     if (r.name === "plus") return renderPlus();
     if (r.name === "creer") return renderCreer(r.arg);
+    if (r.name === "bocal") return renderBocal();
+    if (r.name === "dates") return renderDates();
     if (r.name === "joueur") return renderPlayer();
     return renderHome();
   }
-  window.addEventListener("hashchange", () => { window.scrollTo(0, 0); render(); });
+  window.addEventListener("hashchange", () => { stopSpeak(); window.scrollTo(0, 0); render(); });
   // Mise à jour quand l'autre joue (autre onglet / plus tard Firebase) — sans casser une saisie en cours
   function onStoreChange(reason) {
     if (reason === "auth") return render();
+    // pendant une animation (ex. tirage du bocal), on attend qu'elle finisse avant de redessiner
+    if (Date.now() < (ui.hold || 0)) { clearTimeout(ui.holdT); ui.holdT = setTimeout(() => onStoreChange(reason), ui.hold - Date.now() + 50); return; }
     const r = parseRoute();
-    if (["home", "journal", "soir", "promesses", "lettres", "histoire", "bilan", "plus"].includes(r.name) || (r.name === "semaine" && [4, 5].includes(ui.step[r.arg]))) {
+    if (["home", "journal", "soir", "promesses", "lettres", "histoire", "bilan", "plus", "bocal", "dates"].includes(r.name) || (r.name === "semaine" && [4, 5].includes(ui.step[r.arg]))) {
       if (document.activeElement && ["TEXTAREA", "INPUT"].includes(document.activeElement.tagName)) return;
       render();
     }
@@ -374,6 +378,7 @@
       </header>
       ${notifs.join("")}
       ${soirCardHTML(todayStr(), true)}
+      ${countdownHTML()}
 
       <h2 class="section">Parcours</h2>
       <div class="parcours-bar">
@@ -437,6 +442,7 @@
       ui.step[w] = st.mine ? 4 : prog(w, me).memoDone ? 3 : prog(w, me).kwDone ? 2 : prog(w, me).seen ? 1 : 0;
     }
     const step = ui.step[w];
+    stopSpeak();
     $app.innerHTML = `
       <header class="top slim">
         <button class="icon-btn" onclick="location.hash='#/'" aria-label="Retour">←</button>
@@ -472,7 +478,7 @@
     el.innerHTML = `
       ${wk.passages.map((ps, i) => `
         <article class="card passage">
-          <div class="eyebrow">${esc(ps.ref)}</div>
+          <div class="passage-head"><div class="eyebrow">${esc(ps.ref)}</div>${TTS ? `<button class="listen" data-listen="${i}" aria-label="Écouter le passage">🔊 Écouter</button>` : ""}</div>
           <div class="verses" id="ps${i}">${versesHTML(ps.text)}</div>
         </article>`).join("")}
       ${kw ? `<section class="card kw">
@@ -481,7 +487,8 @@
         <div id="kwZone"></div>
       </section>` : ""}
       <button class="btn full" id="nx">Continuer →</button>`;
-    wk.passages.forEach((ps, i) => Bible.passage(ps).then((t) => { if (t) { const n = el.querySelector("#ps" + i); if (n) n.innerHTML = versesHTML(t); } }));
+    wk.passages.forEach((ps, i) => Bible.passage(ps).then((t) => { if (t) { const n = el.querySelector("#ps" + i); if (n && ui.speaking !== n) n.innerHTML = versesHTML(t); } }));
+    el.querySelectorAll("[data-listen]").forEach((b) => b.onclick = () => speakPassage(el.querySelector("#ps" + b.dataset.listen), b));
 
     const zone = el.querySelector("#kwZone");
     const drawKw = () => {
@@ -508,6 +515,37 @@
     };
     drawKw();
     el.querySelector("#nx").onclick = async () => { if (!prog(w, me).kwDone) await setProg(w, { kwDone: true, keyword: false }); next(w); };
+  }
+  // ---------- 🔊 lecture audio (synthèse vocale du navigateur) ----------
+  const TTS = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+  if (TTS) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); }
+  function frVoice() {
+    const vs = speechSynthesis.getVoices().filter((v) => /^fr/i.test(v.lang));
+    const fr = vs.filter((v) => /fr[-_]FR/i.test(v.lang));
+    return fr.find((v) => /premium|enhanced|natural|amélie|thomas|audrey|google/i.test(v.name)) || fr[0] || vs[0] || null;
+  }
+  function stopSpeak() {
+    if (!TTS) return;
+    ui.speaking = null; speechSynthesis.cancel();
+    document.querySelectorAll(".speaking").forEach((x) => x.classList.remove("speaking"));
+    document.querySelectorAll(".listen.on").forEach((b) => { b.classList.remove("on"); b.textContent = "🔊 Écouter"; });
+  }
+  // Un énoncé par verset : évite la coupure des longs textes sur Chrome et permet de surligner le verset lu
+  function speakPassage(node, btn) {
+    if (!node) return;
+    if (ui.speaking === node) return stopSpeak();
+    stopSpeak();
+    const ps = [...node.querySelectorAll("p")]; if (!ps.length) return;
+    ui.speaking = node; btn.classList.add("on"); btn.textContent = "⏹ Arrêter";
+    const voice = frVoice();
+    ps.forEach((p, k) => {
+      const txt = [...p.childNodes].filter((n) => n.nodeName !== "SUP").map((n) => n.textContent).join("").trim();
+      const u = new SpeechSynthesisUtterance(txt);
+      u.lang = "fr-FR"; u.rate = 0.95; if (voice) u.voice = voice;
+      u.onstart = () => { if (ui.speaking !== node) return; ps.forEach((x) => x.classList.remove("speaking")); p.classList.add("speaking"); };
+      if (k === ps.length - 1) u.onend = () => { if (ui.speaking === node) stopSpeak(); };
+      speechSynthesis.speak(u);
+    });
   }
   const versesHTML = (t) => Object.keys(t).map((v) => `<p><sup>${v}</sup>${esc(t[v])}</p>`).join("");
 
@@ -810,7 +848,18 @@
 
   // ---------- 🌙 Question du jour ----------
   const SOIR = window.SOIR_QUESTIONS || ["Qu'est-ce qui t'a fait sourire aujourd'hui ?"];
-  const soirQ = (day) => { const n = Math.round(parseDay(day).getTime() / 864e5); return SOIR[((n % SOIR.length) + SOIR.length) % SOIR.length]; };
+  const builtinQ = (day) => { const n = Math.round(parseDay(day).getTime() / 864e5); return SOIR[((n % SOIR.length) + SOIR.length) % SOIR.length]; };
+  // Questions proposées par le couple (clé soirq/) : elles passent avant la liste intégrée, dans l'ordre d'ajout.
+  // La question est enregistrée avec chaque réponse ({a, at, q}) : une fois répondue, elle ne change plus.
+  const usedSoirQ = () => new Set(Store.list("soir/").map((x) => x.value && x.value.q).filter(Boolean));
+  const pendingSoirQ = () => { const used = usedSoirQ(); return listOf("soirq/").filter((q) => q.text && !used.has(q.text)).sort((a, b) => a.at - b.at); };
+  function soirQ(day) {
+    const saved = ["a", "b"].map((u) => Store.get(`soir/${day}/${u}`)).find((x) => x && x.q);
+    const custom = (text) => listOf("soirq/").find((q) => q.text === text);
+    if (saved) { const c = custom(saved.q); return { text: saved.q, by: c ? c.by : null }; }
+    if (day === todayStr()) { const nx = pendingSoirQ()[0]; if (nx) return { text: nx.text, by: nx.by }; }
+    return { text: builtinQ(day), by: null };
+  }
   function soirCardHTML(day, compact) {
     const o = other(me), q = soirQ(day), mine = Store.get(`soir/${day}/${me}`), th = Store.get(`soir/${day}/${o}`);
     const isToday = day === todayStr();
@@ -827,13 +876,13 @@
     }
     return `<section class="card soir ${compact ? "compact" : ""}">
       <div class="eyebrow">🌙 ${isToday ? "Question du jour" : fmtDay(day, { weekday: "long", day: "numeric", month: "long" })}</div>
-      <h3>${esc(q)}</h3>${body}</section>`;
+      <h3>${esc(q.text)}</h3>${q.by ? `<p class="small muted q-by">✍️ Proposée par ${esc(P(q.by).name)}</p>` : ""}${body}</section>`;
   }
   function bindSoir(root) {
     root.querySelectorAll("[data-soir-send]").forEach((b) => b.onclick = async () => {
       const day = b.dataset.soirSend, v = root.querySelector(`[data-soir-in="${day}"]`).value.trim();
       if (!v) return;
-      await Store.set(`soir/${day}/${me}`, { a: v, at: Date.now() });
+      await Store.set(`soir/${day}/${me}`, { a: v, at: Date.now(), q: soirQ(day).text });
       if (Store.get(`soir/${day}/${other(me)}`)) confetti(); else toast("Réponse envoyée 🌙");
       render();
     });
@@ -841,10 +890,29 @@
   function renderSoir() {
     const t = todayStr();
     const days = [...new Set(Store.list("soir/").map((x) => x.path.split("/")[1]))].filter((d) => d !== t).sort().reverse();
-    $app.innerHTML = pageHead("Chaque jour", "Question du jour") + soirCardHTML(t) +
+    $app.innerHTML = pageHead("Chaque jour", "Question du jour") + soirCardHTML(t) + soirQueueHTML() +
       `<h2 class="section">Les jours précédents</h2>` +
       (days.length ? days.map((d) => soirCardHTML(d)).join("") : `<p class="muted center-text small">Vos réponses s'afficheront ici, jour après jour.</p>`) + nav("soir");
     bindSoir($app);
+    $app.querySelector("#sqAdd").onclick = async () => {
+      const v = $app.querySelector("#sqT").value.trim(); if (!v) return;
+      if (pendingSoirQ().some((q) => q.text === v) || usedSoirQ().has(v)) return toast("Cette question existe déjà");
+      await Store.set(`soirq/${newId()}`, { text: v, by: me, at: Date.now() });
+      toast("Question ajoutée ✍️"); render();
+    };
+    $app.querySelectorAll("[data-sq-del]").forEach((b) => b.onclick = async () => { await Store.remove(`soirq/${b.dataset.sqDel}`); render(); });
+  }
+  function soirQueueHTML() {
+    const today = soirQ(todayStr()).text; // déjà affichée au-dessus : on ne la compte pas comme « en attente »
+    const pend = pendingSoirQ().filter((q) => q.text !== today), own = pend.filter((q) => q.by === me), theirs = pend.length - own.length;
+    return `<section class="card">
+      <div class="eyebrow">✍️ Vos questions</div>
+      <p class="small muted">Propose une question pour un prochain soir : les vôtres passent avant les questions prévues, dans l'ordre d'ajout.</p>
+      <textarea id="sqT" rows="2" placeholder="Ta question…"></textarea>
+      <div class="row end"><button class="btn sm" id="sqAdd">Ajouter</button></div>
+      ${theirs ? `<p class="small muted">+ ${theirs} question${theirs > 1 ? "s" : ""} de ${esc(P(other(me)).name)} en attente : surprise 🤫</p>` : ""}
+      ${own.length ? `<ul class="recap">${own.map((q) => `<li class="row between q-row"><span class="grow">${esc(q.text)}</span><button class="link danger" data-sq-del="${q.id}">Retirer</button></li>`).join("")}</ul>` : ""}
+    </section>`;
   }
 
   // ---------- ✍️ Promesses ----------
@@ -1122,6 +1190,8 @@
     const tiles = [
       ["#/journal", "🙏", "Journal de prière", "Vos intentions et les prières exaucées"],
       ["#/promesses", "✍️", "Nos promesses", "Les engagements que vous avez signés"],
+      ["#/bocal", "🫙", "Bocal à idées", "Vos idées de sorties, tirées au hasard"],
+      ["#/dates", "📅", "Nos dates", "Anniversaires et comptes à rebours"],
       ["#/creer", "✨", "Créer une semaine", "Vos propres thèmes et passages"],
       ["#/guide", "❓", "Comment ça marche", "Revoir le guide"]
     ];
@@ -1131,6 +1201,9 @@
       ${PARCOURS.filter((x) => x.weeks.length).map((x) => { const d = parcoursDone(x); return `<a class="week" href="#/bilan/${x.id}">
         <span class="week-emoji">${x.emoji}</span><span class="week-txt"><strong>${esc(x.title)}</strong><span class="pc-prog"><span style="width:${Math.round((d / x.weeks.length) * 100)}%"></span></span></span>
         <span class="chip ${d === x.weeks.length ? "done" : ""}">${d === x.weeks.length ? "Terminé 🎉" : `${d}/${x.weeks.length}`}</span></a>`; }).join("")}
+      <h2 class="section">🌓 Apparence</h2>
+      <div class="tabs">${THEMES.map(([v, l]) => `<button data-theme-set="${v}" class="${getTheme() === v ? "on" : ""}">${l}</button>`).join("")}</div>
+      <p class="small muted pc-desc">Auto suit le réglage de ton appareil · « Le soir » passe en sombre de 20 h à 7 h.</p>
       <footer class="foot small muted">
         Joueur : <strong>${esc(P(me).name)}</strong> · ${FB ? `<a href="#" id="logout">se déconnecter</a>` : `<a href="#/joueur">changer</a>`}
         ${Store.mode === "local" ? ` · <a href="#" id="reset">réinitialiser (test)</a>` : ""}
@@ -1140,6 +1213,10 @@
     const lo = document.getElementById("logout");
     if (lo) lo.onclick = (e) => { e.preventDefault(); Store.signOut(); };
     document.getElementById("export").onclick = (e) => { e.preventDefault(); exportData(); };
+    $app.querySelectorAll("[data-theme-set]").forEach((b) => b.onclick = () => {
+      try { localStorage.setItem(THEME_KEY, b.dataset.themeSet); } catch (e) {}
+      applyTheme(); renderPlus();
+    });
     const rs = document.getElementById("reset");
     if (rs) rs.onclick = async (e) => {
       e.preventDefault();
@@ -1160,12 +1237,185 @@
       out.photos = {};
       for (const id of ids) { try { out.photos[id] = await Store.getBlob(id); } catch (e) { console.warn("photo", id, e); } }
     }
-    const url = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: "application/json" }));
-    const a = Object.assign(document.createElement("a"), { href: url, download: `corde-a-trois-fils-${new Date().toISOString().slice(0, 10)}.json` });
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    downloadFile(`corde-a-trois-fils-${todayStr()}.json`, JSON.stringify(out, null, 1), "application/json");
     toast("Sauvegarde téléchargée 💾");
   }
+
+  // ---------- 🫙 Bocal à idées de sorties ----------
+  const IDEA_CATS = [["maison", "🏠", "À la maison"], ["dehors", "🌳", "Dehors"], ["resto", "🍽️", "Resto / café"], ["gratuit", "💸", "Gratuit"], ["escapade", "✈️", "Escapade"]];
+  const catOf = (c) => IDEA_CATS.find((x) => x[0] === c) || ["", "💡", "Idée"];
+  function renderBocal() {
+    const all = listOf("idees/").sort((a, b) => b.at - a.at);
+    const todo = all.filter((x) => !x.done), done = all.filter((x) => x.done).sort((a, b) => b.doneAt - a.doneAt);
+    const cat = ui.bocalCat || "all", pool = todo.filter((x) => cat === "all" || x.cat === cat);
+    const pick = Store.get("idees-tirage"), picked = pick && todo.find((x) => x.id === pick.id);
+    const anim = ui.bocalAnim; ui.bocalAnim = false;
+    $app.innerHTML = pageHead("Ensemble", "Bocal à idées", "#/plus") + `
+      <section class="card jar-card">
+        <div class="jar" id="jar" aria-hidden="true"><span class="jar-glass">🫙</span>${todo.slice(0, 7).map((_, i) => `<i class="paper p${i}"></i>`).join("")}</div>
+        <p class="center-text muted small">${todo.length ? `${todo.length} idée${todo.length > 1 ? "s" : ""} dans le bocal` : "Le bocal est vide : ajoutez vos premières idées !"}</p>
+        <div class="cat-filter">${[["all", "✨", "Toutes"], ...IDEA_CATS].map(([v, e, l]) => `<button class="chip-btn ${cat === v ? "on" : ""}" data-cat="${v}">${e} ${l}</button>`).join("")}</div>
+        <button class="btn full" id="draw" ${pool.length ? "" : "disabled"}>🎲 Tirer une idée au hasard</button>
+        ${picked ? `<div class="idea-paper ${anim ? "unfold" : ""}">
+          <div class="eyebrow">${catOf(picked.cat)[1]} ${esc(catOf(picked.cat)[2])} · tirée par ${esc(P(pick.by).name)}</div>
+          <p class="idea-txt">${esc(picked.text)}</p>
+          <div class="row between"><button class="btn sm" id="ideaDone">✔ On l'a fait !</button><button class="link" id="ideaAgain">Une autre</button></div>
+        </div>` : ""}
+      </section>
+      <section class="card">
+        <div class="eyebrow">➕ Ajouter une idée</div>
+        <input id="idT" placeholder="Pique-nique au bord du lac, soirée crêpes, musée…" maxlength="160">
+        <select id="idC">${IDEA_CATS.map(([v, e, l]) => `<option value="${v}">${e} ${l}</option>`).join("")}</select>
+        <button class="btn full" id="idAdd">Mettre dans le bocal</button>
+      </section>
+      ${todo.length ? `<details class="card idea-list"><summary>Voir les idées du bocal (${todo.length})</summary>
+        ${todo.map((x) => `<div class="idea-row"><span>${catOf(x.cat)[1]}</span><span class="grow">${esc(x.text)}<br><span class="small muted">${esc(P(x.by).name)} · ${fmtDate(x.at)}</span></span><button class="link danger" data-idea-del="${x.id}">Retirer</button></div>`).join("")}
+      </details>` : ""}
+      ${done.length ? `<h2 class="section">✔ Déjà faites</h2>${done.map((x) => `<div class="card idea-row done"><span>${catOf(x.cat)[1]}</span><span class="grow">${esc(x.text)}<br><span class="small muted">Faite le ${fmtDate(x.doneAt)}</span></span><button class="link" data-idea-back="${x.id}">Remettre</button></div>`).join("")}` : ""}` + nav("plus");
+
+    $app.querySelectorAll("[data-cat]").forEach((b) => b.onclick = () => { ui.bocalCat = b.dataset.cat; renderBocal(); });
+    $app.querySelector("#idAdd").onclick = async () => {
+      const t = $app.querySelector("#idT").value.trim(); if (!t) return;
+      await Store.set(`idees/${newId()}`, { text: t, cat: $app.querySelector("#idC").value, by: me, at: Date.now(), done: false });
+      toast("Idée ajoutée au bocal 🫙"); renderBocal();
+    };
+    $app.querySelector("#draw").onclick = () => {
+      const choices = pool.length > 1 && picked ? pool.filter((x) => x.id !== picked.id) : pool;
+      if (!choices.length) return;
+      const choice = choices[Math.floor(Math.random() * choices.length)];
+      const jar = $app.querySelector("#jar"); jar.classList.remove("shake-jar"); void jar.offsetWidth; jar.classList.add("shake-jar");
+      $app.querySelector("#draw").disabled = true;
+      ui.hold = Date.now() + 2200;
+      setTimeout(async () => {
+        await Store.set("idees-tirage", { id: choice.id, by: me, at: Date.now() });
+        ui.bocalAnim = true; renderBocal();
+      }, 1000);
+    };
+    const dn = $app.querySelector("#ideaDone");
+    if (dn) dn.onclick = async () => {
+      await Store.set(`idees/${picked.id}`, { ...Store.get(`idees/${picked.id}`), done: true, doneAt: Date.now() });
+      await Store.remove("idees-tirage"); confetti();
+      if (confirm("Ajouter ce moment à votre histoire ?")) {
+        await Store.set(`story/${newId()}`, { date: todayStr(), emoji: catOf(picked.cat)[1], title: picked.text, text: "", by: me, at: Date.now(), hasPhoto: false });
+        toast("Ajouté à votre histoire 📸");
+      }
+      renderBocal();
+    };
+    const ag = $app.querySelector("#ideaAgain"); if (ag) ag.onclick = () => $app.querySelector("#draw").click();
+    $app.querySelectorAll("[data-idea-del]").forEach((b) => b.onclick = async () => {
+      if (!confirm("Retirer cette idée du bocal ?")) return;
+      await Store.remove(`idees/${b.dataset.ideaDel}`); renderBocal();
+    });
+    $app.querySelectorAll("[data-idea-back]").forEach((b) => b.onclick = async () => {
+      const k = `idees/${b.dataset.ideaBack}`; await Store.set(k, { ...Store.get(k), done: false, doneAt: null }); renderBocal();
+    });
+  }
+
+  // ---------- 📅 Nos dates ----------
+  const DATE_EMOJIS = ["💞", "💍", "🎂", "⛪", "🌹", "✈️", "🏡", "🎉"];
+  // Prochaine occurrence : chaque année pour un anniversaire, sinon la date elle-même
+  function nextOcc(d) {
+    if (!d.recurring) return { day: d.date, years: null };
+    const o = parseDay(d.date), t = parseDay(todayStr());
+    let y = t.getFullYear(), n = new Date(y, o.getMonth(), o.getDate());
+    if (n < t) n = new Date(++y, o.getMonth(), o.getDate());
+    return { day: todayStr(n), years: y - o.getFullYear() };
+  }
+  const datesInfo = () => listOf("dates/").filter((d) => d.date).map((d) => { const n = nextOcc(d); return { ...d, next: n.day, years: n.years, inDays: daysUntil(n.day), remind: d.remind ?? 7 }; });
+  const yearsLbl = (d) => (d.years > 0 ? ` · ${d.years} an${d.years > 1 ? "s" : ""}` : "");
+  const cdNum = (d) => d.inDays === 0 ? `<div class="cd-num today"><b>🎉</b><span>aujourd'hui</span></div>`
+    : d.inDays > 0 ? `<div class="cd-num"><b>${d.inDays}</b><span>jour${d.inDays > 1 ? "s" : ""}</span></div>`
+    : `<div class="cd-num past"><span>il y a</span><b>${-d.inDays}</b><span>jour${d.inDays < -1 ? "s" : ""}</span></div>`;
+  // Carte(s) compte à rebours de l'accueil : toutes les dates dans leur fenêtre de rappel, sinon la plus proche
+  function countdownHTML() {
+    const up = datesInfo().filter((d) => d.inDays >= 0).sort((a, b) => a.inDays - b.inDays);
+    const soon = up.filter((d) => d.inDays <= d.remind), shown = soon.length ? soon : up.slice(0, 1);
+    shown.filter((d) => d.inDays === 0).forEach((d) => {
+      const k = `bc-fete-${d.id}-${todayStr()}`;
+      try { if (!localStorage.getItem(k)) { localStorage.setItem(k, "1"); setTimeout(confetti, 400); } } catch (e) {}
+    });
+    return shown.map((d) => `<a class="card countdown ${d.inDays <= d.remind ? "soon" : ""}" href="#/dates">
+      <span class="cd-emoji">${esc(d.emoji || "📅")}</span>
+      <div class="grow"><div class="eyebrow">${d.inDays === 0 ? "C'est aujourd'hui !" : d.inDays <= d.remind ? "⏰ Rappel" : "Prochaine date"}</div>
+        <strong>${esc(d.title)}</strong><div class="small muted">${fmtDay(d.next, { weekday: "long", day: "numeric", month: "long" })}${yearsLbl(d)}</div></div>
+      ${cdNum(d)}</a>`).join("");
+  }
+  function downloadFile(name, content, type) {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+  // Fichier .ics : ajoute la date au calendrier du téléphone, avec un vrai rappel X jours avant et le jour même
+  function icsFor(d) {
+    const icsEsc = (s) => String(s).replace(/[\\;,]/g, (c) => "\\" + c).replace(/\n/g, "\\n");
+    const start = d.recurring ? d.date : d.next, end = new Date(parseDay(start).getTime() + 864e5 + 36e5);
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+    return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//La corde a trois fils//FR", "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
+      `UID:${d.id}@corde-a-trois-fils`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${start.replace(/-/g, "")}`, `DTEND;VALUE=DATE:${todayStr(end).replace(/-/g, "")}`,
+      `SUMMARY:${icsEsc(`${d.emoji || ""} ${d.title}`.trim())}`, ...(d.recurring ? ["RRULE:FREQ=YEARLY"] : []),
+      "BEGIN:VALARM", `TRIGGER:-P${d.remind}D`, "ACTION:DISPLAY", `DESCRIPTION:${icsEsc(`${d.title} dans ${d.remind} jours`)}`, "END:VALARM",
+      "BEGIN:VALARM", "TRIGGER:PT9H", "ACTION:DISPLAY", `DESCRIPTION:${icsEsc(`C'est aujourd'hui : ${d.title}`)}`, "END:VALARM",
+      "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+  }
+  function renderDates() {
+    const all = datesInfo(), up = all.filter((d) => d.inDays >= 0).sort((a, b) => a.inDays - b.inDays), past = all.filter((d) => d.inDays < 0).sort((a, b) => a.inDays - b.inDays);
+    ui.dateEmoji = ui.dateEmoji || DATE_EMOJIS[0];
+    const item = (d) => `<article class="card date-item">
+      <div class="date-main"><span class="cd-emoji">${esc(d.emoji || "📅")}</span>
+        <div class="grow"><strong>${esc(d.title)}</strong><div class="small muted">${fmtDay(d.next, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}${yearsLbl(d)}${d.recurring ? " · chaque année" : ""}</div>
+        ${d.inDays >= 0 ? `<div class="small muted">🔔 Rappel ${d.remind} jour${d.remind > 1 ? "s" : ""} avant</div>` : ""}</div>
+        ${cdNum(d)}</div>
+      <div class="row between">${d.inDays >= 0 ? `<button class="chip-btn" data-ics="${d.id}">📅 Ajouter à mon calendrier</button>` : "<span></span>"}<button class="link danger" data-date-del="${d.id}">Supprimer</button></div>
+    </article>`;
+    $app.innerHTML = pageHead("Ensemble", "Nos dates", "#/plus") + `
+      <section class="card">
+        <div class="eyebrow">➕ Ajouter une date</div>
+        <div class="emoji-pick">${DATE_EMOJIS.map((e) => `<button class="${e === ui.dateEmoji ? "on" : ""}" data-demoji="${e}">${e}</button>`).join("")}</div>
+        <input id="dT" placeholder="Notre rencontre, fiançailles, anniversaire de ${esc(P(other(me)).name)}…" maxlength="80">
+        <input type="date" id="dD">
+        <label class="check-row"><input type="checkbox" id="dR" checked> Revient chaque année (anniversaire)</label>
+        <select id="dRem">${[[1, "1 jour"], [3, "3 jours"], [7, "1 semaine"], [14, "2 semaines"], [30, "1 mois"]].map(([v, l]) => `<option value="${v}" ${v === 7 ? "selected" : ""}>🔔 Rappel ${l} avant</option>`).join("")}</select>
+        <button class="btn full" id="dAdd">Ajouter</button>
+      </section>
+      ${up.length ? `<h2 class="section">⏳ À venir</h2>${up.map(item).join("")}` : ""}
+      ${past.length ? `<h2 class="section">🕰️ Souvenirs</h2>${past.map(item).join("")}` : ""}
+      ${!all.length ? `<p class="muted center-text small">Ajoutez vos dates importantes : un compte à rebours apparaîtra sur l'accueil, avec un rappel quelques jours avant.</p>` : ""}
+      <p class="small muted center-text">Le rappel s'affiche sur l'accueil. Pour une notification sur ton téléphone, utilise « Ajouter à mon calendrier ».</p>` + nav("plus");
+    $app.querySelectorAll("[data-demoji]").forEach((b) => b.onclick = () => {
+      ui.dateEmoji = b.dataset.demoji;
+      $app.querySelectorAll("[data-demoji]").forEach((x) => x.classList.toggle("on", x === b));
+    });
+    $app.querySelector("#dAdd").onclick = async () => {
+      const title = $app.querySelector("#dT").value.trim(), date = $app.querySelector("#dD").value;
+      if (!title) return toast("Donne un nom à cette date");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast("Choisis une date");
+      await Store.set(`dates/${newId()}`, { title, date, emoji: ui.dateEmoji, recurring: $app.querySelector("#dR").checked, remind: +$app.querySelector("#dRem").value, by: me, at: Date.now() });
+      toast("Date ajoutée 📅"); renderDates();
+    };
+    $app.querySelectorAll("[data-ics]").forEach((b) => b.onclick = () => {
+      const d = all.find((x) => x.id === b.dataset.ics);
+      downloadFile(`${d.title.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase()}.ics`, icsFor(d), "text/calendar");
+    });
+    $app.querySelectorAll("[data-date-del]").forEach((b) => b.onclick = async () => {
+      if (!confirm("Supprimer cette date ?")) return;
+      await Store.remove(`dates/${b.dataset.dateDel}`); renderDates();
+    });
+  }
+
+  // ---------- 🌓 Thème clair / sombre ----------
+  const THEME_KEY = "bc-theme";
+  const THEMES = [["auto", "Auto"], ["soir", "Le soir"], ["light", "Clair"], ["dark", "Sombre"]];
+  const getTheme = () => { try { return localStorage.getItem(THEME_KEY) || "auto"; } catch (e) { return "auto"; } };
+  const darkMQ = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : { matches: false };
+  function applyTheme() {
+    const t = getTheme(), h = new Date().getHours();
+    const dark = t === "dark" || (t === "auto" && darkMQ.matches) || (t === "soir" && (h >= 20 || h < 7));
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? "#17130f" : "#f5efe7";
+  }
+  if (darkMQ.addEventListener) darkMQ.addEventListener("change", applyTheme);
+  setInterval(applyTheme, 60000); applyTheme();
 
   // ---------- ✨ Créer une semaine ----------
   const BOOKS = ["Genèse", "Exode", "Lévitique", "Nombres", "Deutéronome", "Josué", "Juges", "Ruth", "1 Samuel", "2 Samuel", "1 Rois", "2 Rois", "1 Chroniques", "2 Chroniques", "Esdras", "Néhémie", "Esther", "Job", "Psaumes", "Proverbes", "Ecclésiaste", "Cantique des cantiques", "Ésaïe", "Jérémie", "Lamentations", "Ézéchiel", "Daniel", "Osée", "Joël", "Amos", "Abdias", "Jonas", "Michée", "Nahum", "Habacuc", "Sophonie", "Aggée", "Zacharie", "Malachie", "Matthieu", "Marc", "Luc", "Jean", "Actes", "Romains", "1 Corinthiens", "2 Corinthiens", "Galates", "Éphésiens", "Philippiens", "Colossiens", "1 Thessaloniciens", "2 Thessaloniciens", "1 Timothée", "2 Timothée", "Tite", "Philémon", "Hébreux", "Jacques", "1 Pierre", "2 Pierre", "1 Jean", "2 Jean", "3 Jean", "Jude", "Apocalypse"];

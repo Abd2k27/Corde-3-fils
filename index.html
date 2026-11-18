@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>La corde à trois fils</title>
   <meta name="theme-color" content="#f5efe7">
+  <script>
+    // Applique le thème avant l'affichage (évite un flash clair en mode sombre). Même logique que applyTheme() dans app.js
+    (function () { var t = "auto"; try { t = localStorage.getItem("bc-theme") || "auto"; } catch (e) {}
+      var h = new Date().getHours(), d = t === "dark" || (t === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) || (t === "soir" && (h >= 20 || h < 7));
+      document.documentElement.setAttribute("data-theme", d ? "dark" : "light"); })();
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Corde à 3 fils">
   <link rel="manifest" href="manifest.json">
