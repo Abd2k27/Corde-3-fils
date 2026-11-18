@@ -178,6 +178,7 @@
     return { name: h[0] || "home", arg: h[1] };
   }
   function render() {
+    document.body.classList.remove("with-nav"); $app.dataset.page = "";
     resolveMe();
     if (Store.status !== "signedOut" && Store.list) syncCustom();
     if (parseRoute().name === "guide") return renderGuide();
@@ -187,19 +188,15 @@
     if (!me) return renderPlayer();
     const r = parseRoute();
     if (!localStorage.getItem(GUIDE_KEY)) return go("#/guide");
-    if (r.name === "semaine") return renderWeek(r.arg);
-    if (r.name === "journal") return renderJournal();
-    if (r.name === "soir") return renderSoir();
-    if (r.name === "promesses") return renderPromesses();
-    if (r.name === "lettres") return renderLettres();
-    if (r.name === "histoire") return renderHistoire();
-    if (r.name === "bilan") return renderBilan(r.arg);
-    if (r.name === "plus") return renderPlus();
-    if (r.name === "creer") return renderCreer(r.arg);
-    if (r.name === "bocal") return renderBocal();
-    if (r.name === "dates") return renderDates();
     if (r.name === "joueur") return renderPlayer();
-    return renderHome();
+    const pages = {
+      semaine: () => renderWeek(r.arg), journal: renderJournal, soir: renderSoir, promesses: renderPromesses, lettres: renderLettres,
+      histoire: renderHistoire, bilan: () => renderBilan(r.arg), plus: renderPlus, creer: () => renderCreer(r.arg),
+      bocal: renderBocal, dates: renderDates, lecture: () => renderLecture(r.arg)
+    };
+    $app.dataset.page = pages[r.name] ? r.name : "home"; // sert à la mise en page (largeur) sur ordinateur
+    (pages[r.name] || renderHome)();
+    document.body.classList.add("with-nav"); drawSide(r.name);
   }
   window.addEventListener("hashchange", () => { stopSpeak(); window.scrollTo(0, 0); render(); });
   // Mise à jour quand l'autre joue (autre onglet / plus tard Firebase) — sans casser une saisie en cours
@@ -208,7 +205,7 @@
     // pendant une animation (ex. tirage du bocal), on attend qu'elle finisse avant de redessiner
     if (Date.now() < (ui.hold || 0)) { clearTimeout(ui.holdT); ui.holdT = setTimeout(() => onStoreChange(reason), ui.hold - Date.now() + 50); return; }
     const r = parseRoute();
-    if (["home", "journal", "soir", "promesses", "lettres", "histoire", "bilan", "plus", "bocal", "dates"].includes(r.name) || (r.name === "semaine" && [4, 5].includes(ui.step[r.arg]))) {
+    if (["home", "journal", "soir", "promesses", "lettres", "histoire", "bilan", "plus", "bocal", "dates", "lecture"].includes(r.name) || (r.name === "semaine" && [4, 5].includes(ui.step[r.arg]))) {
       if (document.activeElement && ["TEXTAREA", "INPUT"].includes(document.activeElement.tagName)) return;
       render();
     }
@@ -376,9 +373,14 @@
         <div><div class="eyebrow">Bonjour ${esc(P(me).name)}</div><h1 class="h-title">${esc(CFG.appName)}</h1></div>
         <div class="row tight"><button class="icon-btn" onclick="location.hash='#/guide'" title="Comment ça marche ?" aria-label="Comment ça marche ?">?</button><div class="duo">${avatar("a")}${avatar("b")}</div></div>
       </header>
+      <div class="home-grid">
+      <div class="home-side">
       ${notifs.join("")}
       ${soirCardHTML(todayStr(), true)}
+      ${readingCardHTML()}
       ${countdownHTML()}
+      </div>
+      <div class="home-main">
 
       <h2 class="section">Parcours</h2>
       <div class="parcours-bar">
@@ -414,7 +416,7 @@
           </button>`;
         }).join("")}
         ${pc.custom ? `<a class="btn ghost full" href="#/creer">✨ Créer une semaine</a>` : ""}
-      </div>` + nav("home");
+      </div></div></div>` + nav("home");
     $app.querySelectorAll(".week[data-w]").forEach((b) => b.onclick = () => go(`#/semaine/${b.dataset.w}`));
     $app.querySelectorAll("[data-pc]").forEach((b) => b.onclick = () => { curP = b.dataset.pc; localStorage.setItem("bc-parcours", curP); renderHome(); });
     const on = $app.querySelector(".pc.on"); if (on) on.scrollIntoView({ inline: "center", block: "nearest" });
@@ -833,15 +835,21 @@
       <div class="grow"><div class="eyebrow">${eyebrow}</div><h1 class="h-title">${title}</h1></div>
     </header>`;
 
-  const NAV = [["home", "#/", "🏡", "Accueil"], ["soir", "#/soir", "🌙", "Ce soir"], ["histoire", "#/histoire", "📸", "Histoire"], ["lettres", "#/lettres", "💌", "Lettres"], ["plus", "#/plus", "☰", "Plus"]];
+  const NAV = [["home", "#/", "🏡", "Accueil"], ["lecture", "#/lecture", "📖", "Lecture"], ["soir", "#/soir", "🌙", "Ce soir"], ["histoire", "#/histoire", "📸", "Histoire"], ["plus", "#/plus", "☰", "Plus"]];
   function navBadges() {
-    return {
+    const p = activePlan(), d = p && planDay(p);
+    const b = {
       soir: !Store.get(`soir/${todayStr()}/${me}`),
-      lettres: listOf("letters/").some((l) => l.to === me && !l.openedAt && daysUntil(l.openAt) <= 0)
+      lecture: !!(p && d <= p.days.length && !readOf(p.id, d, me)),
+      lettres: listOf("letters/").some((l) => l.to === me && !l.openedAt && daysUntil(l.openAt) <= 0),
+      promesses: listOf("promises/").some((x) => x.couple && !(x.signed || {})[me])
     };
+    b.plus = b.lettres || b.promesses; // sur mobile, Lettres et Promesses sont dans « Plus »
+    return b;
   }
   function nav(active) {
     const b = navBadges();
+    if (!NAV.some((n) => n[0] === active)) active = "plus";
     return `<div class="nav-space"></div><nav class="bottom-nav">${NAV.map(([id, h, ic, l]) =>
       `<a href="${h}" class="${id === active ? "on" : ""}"${id === active ? ' aria-current=page' : ""}><span class="ni">${ic}${b[id] ? '<i class="dot-badge"></i>' : ""}</span><span>${l}</span></a>`).join("")}</nav>`;
   }
@@ -1190,6 +1198,7 @@
     const tiles = [
       ["#/journal", "🙏", "Journal de prière", "Vos intentions et les prières exaucées"],
       ["#/promesses", "✍️", "Nos promesses", "Les engagements que vous avez signés"],
+      ["#/lettres", "💌", "Lettres", "À ouvrir plus tard"],
       ["#/bocal", "🫙", "Bocal à idées", "Vos idées de sorties, tirées au hasard"],
       ["#/dates", "📅", "Nos dates", "Anniversaires et comptes à rebours"],
       ["#/creer", "✨", "Créer une semaine", "Vos propres thèmes et passages"],
@@ -1198,9 +1207,9 @@
     $app.innerHTML = pageHead("Ensemble", "Plus") + `
       <div class="tiles">${tiles.map(([h, i, t, d]) => `<a class="tile" href="${h}"><span>${i}</span><strong>${t}</strong><small>${d}</small></a>`).join("")}</div>
       <h2 class="section">📊 Bilans des parcours</h2>
-      ${PARCOURS.filter((x) => x.weeks.length).map((x) => { const d = parcoursDone(x); return `<a class="week" href="#/bilan/${x.id}">
+      <div class="bilans">${PARCOURS.filter((x) => x.weeks.length).map((x) => { const d = parcoursDone(x); return `<a class="week" href="#/bilan/${x.id}">
         <span class="week-emoji">${x.emoji}</span><span class="week-txt"><strong>${esc(x.title)}</strong><span class="pc-prog"><span style="width:${Math.round((d / x.weeks.length) * 100)}%"></span></span></span>
-        <span class="chip ${d === x.weeks.length ? "done" : ""}">${d === x.weeks.length ? "Terminé 🎉" : `${d}/${x.weeks.length}`}</span></a>`; }).join("")}
+        <span class="chip ${d === x.weeks.length ? "done" : ""}">${d === x.weeks.length ? "Terminé 🎉" : `${d}/${x.weeks.length}`}</span></a>`; }).join("")}</div>
       <h2 class="section">🌓 Apparence</h2>
       <div class="tabs">${THEMES.map(([v, l]) => `<button data-theme-set="${v}" class="${getTheme() === v ? "on" : ""}">${l}</button>`).join("")}</div>
       <p class="small muted pc-desc">Auto suit le réglage de ton appareil · « Le soir » passe en sombre de 20 h à 7 h.</p>
@@ -1241,6 +1250,141 @@
     toast("Sauvegarde téléchargée 💾");
   }
 
+  // ---------- 📖 Plan de lecture à deux ----------
+  // Un seul plan actif (clé lecture-plan). Lecture : lecture/<plan>/<jour>/<joueur> = { at, note }.
+  // À votre rythme : le jour suivant s'ouvre quand vous avez lu tous les deux le jour en cours.
+  const PLANS = window.LECTURE_PLANS || [];
+  const planById = (id) => PLANS.find((p) => p.id === id);
+  const activePlan = () => { const a = Store.get("lecture-plan"); return a ? planById(a.id) || null : null; };
+  const readOf = (pid, d, u) => Store.get(`lecture/${pid}/${d}/${u}`);
+  const bothRead = (pid, d) => !!(readOf(pid, d, "a") && readOf(pid, d, "b"));
+  // premier jour pas encore lu par vous deux (> nombre de jours = plan terminé)
+  function planDay(p) { let d = 1; while (d <= p.days.length && bothRead(p.id, d)) d++; return d; }
+  const planDone = (p) => p.days.filter((_, i) => bothRead(p.id, i + 1)).length;
+  // « Jean 3 – 4 », « Psaumes 1 – 3 », « Marc 16 · Luc 1 »
+  function dayRef(p, d) {
+    const groups = [];
+    (p.days[d - 1] || []).forEach(([b, c]) => { const g = groups[groups.length - 1]; if (g && g.b === b) g.to = c; else groups.push({ b, from: c, to: c }); });
+    return groups.map((g) => `${BOOKS[g.b - 1]} ${g.from}${g.to !== g.from ? ` – ${g.to}` : ""}`).join(" · ");
+  }
+  // série : jours de calendrier consécutifs où vous avez terminé une lecture à deux
+  function readingStreak(p) {
+    const days = new Set();
+    for (let d = 1; d <= p.days.length; d++) {
+      const a = readOf(p.id, d, "a"), b = readOf(p.id, d, "b");
+      if (a && b) days.add(todayStr(new Date(Math.max(a.at, b.at))));
+    }
+    const cur = new Date(); if (!days.has(todayStr(cur))) cur.setDate(cur.getDate() - 1);
+    let n = 0; while (days.has(todayStr(cur))) { n++; cur.setDate(cur.getDate() - 1); }
+    return n;
+  }
+  const progBar = (done, total) => `<span class="pc-prog"><span style="width:${Math.round((done / (total || 1)) * 100)}%"></span></span>`;
+  function readingCardHTML() {
+    const p = activePlan();
+    if (!p) return `<a class="card reading-card" href="#/lecture"><div class="eyebrow">📖 Lecture à deux</div><strong>Lire la Bible ensemble, à votre rythme</strong><div class="small muted">Choisir un plan →</div></a>`;
+    const d = planDay(p), done = planDone(p), o = other(me);
+    if (d > p.days.length) return `<a class="card reading-card" href="#/lecture"><div class="eyebrow">📖 ${esc(p.title)}</div><strong>🎉 Plan terminé !</strong><div class="small muted">Choisir le suivant →</div></a>`;
+    const st = (u) => readOf(p.id, d, u) ? `${avatar(u, "sm")} lu ✓` : `${avatar(u, "sm")} <span class="muted">pas encore</span>`;
+    return `<a class="card reading-card" href="#/lecture">
+      <div class="row between tight"><div class="eyebrow">📖 Lecture du jour · ${d}/${p.days.length}</div>${readingStreak(p) ? `<span class="small">${readingStreak(p)} 🔥</span>` : ""}</div>
+      <strong class="reading-ref">${esc(dayRef(p, d))}</strong>
+      ${progBar(done, p.days.length)}
+      <div class="row between"><span class="small">${st(me)} &nbsp; ${st(o)}</span><span class="btn sm">${readOf(p.id, d, me) ? "Voir" : "Lire"} →</span></div>
+    </a>`;
+  }
+  function renderPlanChoice(cur) {
+    $app.innerHTML = pageHead("Lecture à deux", "Choisir un plan", cur ? "#/lecture" : "") + `
+      <p class="pc-desc">Chacun lit de son côté, coche « J'ai lu » et note ce qui l'a marqué. Le jour suivant s'ouvre quand vous avez lu tous les deux : personne ne prend de retard.</p>
+      <div class="plan-grid">${PLANS.map((p) => { const done = planDone(p); return `<article class="card plan ${cur && cur.id === p.id ? "on" : ""}">
+        <span class="plan-emoji">${p.emoji}</span><h3>${esc(p.title)}</h3><p class="small muted">${esc(p.desc)}</p>
+        ${done ? `${progBar(done, p.days.length)}<p class="small muted">${done}/${p.days.length} jours lus</p>` : ""}
+        <button class="btn ${cur && cur.id === p.id ? "ghost" : ""} full" data-plan="${p.id}">${cur && cur.id === p.id ? "Plan en cours" : done >= p.days.length ? "Recommencer la lecture" : done ? "Reprendre" : "Commencer"}</button>
+      </article>`; }).join("")}</div>` + nav("lecture");
+    $app.querySelectorAll("[data-plan]").forEach((b) => b.onclick = async () => {
+      const p = planById(b.dataset.plan);
+      if (cur && cur.id === p.id) return go("#/lecture");
+      if (planDone(p) >= p.days.length && !confirm("Ce plan est terminé. Effacer vos lectures pour le recommencer ?")) return;
+      if (planDone(p) >= p.days.length) for (let d = 1; d <= p.days.length; d++) for (const u of ["a", "b"]) if (readOf(p.id, d, u)) await Store.remove(`lecture/${p.id}/${d}/${u}`);
+      await Store.set("lecture-plan", { id: p.id, by: me, at: Date.now() });
+      toast(`${p.emoji} ${p.title} : c'est parti !`); go("#/lecture");
+    });
+  }
+  function renderLecture(arg) {
+    const p = activePlan();
+    if (!p || arg === "plans") return renderPlanChoice(p);
+    const cur = planDay(p), total = p.days.length, o = other(me);
+    if (cur > total && !arg) {
+      $app.innerHTML = pageHead("Lecture à deux", p.title) + `<section class="card center-text"><div class="big-emoji">🎉</div><h2>Plan terminé !</h2>
+        <p class="muted">Vous avez lu ensemble les ${total} jours de « ${esc(p.title)} ».</p><a class="btn full" href="#/lecture/plans">Choisir un nouveau plan</a></section>` + nav("lecture");
+      return;
+    }
+    const d = Math.min(Math.max(+arg || cur, 1), Math.min(cur, total));
+    const mine = readOf(p.id, d, me), theirs = readOf(p.id, d, o), both = mine && theirs, chs = p.days[d - 1];
+    let readBox;
+    if (!mine) readBox = `<div class="eyebrow">✍️ Ce qui m'a marqué</div>
+      <textarea id="lnNote" rows="3" placeholder="Une phrase, un verset… (facultatif — ${esc(P(o).name)} la verra quand vous aurez lu tous les deux)"></textarea>
+      <button class="btn full" id="lnDone">✓ J'ai lu</button>${theirs ? `<p class="small muted center-text">${esc(P(o).name)} a déjà lu 👀</p>` : ""}`;
+    else if (!theirs) readBox = `<div class="eyebrow">✓ Tu as lu</div>${mine.note ? `<div class="ans">${avatar(me, "sm")}<p>${esc(mine.note)}</p></div>` : ""}<p class="small muted">⏳ En attente de ${esc(P(o).name)} pour ouvrir le jour suivant…</p>`;
+    else readBox = `<div class="eyebrow">💬 Ce qui vous a marqués</div>
+      <div class="ans-grid"><div class="ans">${avatar(me, "sm")}<p>${esc(mine.note || "—")}</p></div><div class="ans">${avatar(o, "sm")}<p>${esc(theirs.note || "—")}</p></div></div>
+      ${d < total ? `<a class="btn full" href="#/lecture/${d + 1}">Jour ${d + 1} →</a>` : `<a class="btn full" href="#/lecture">🎉 Terminer le plan</a>`}`;
+    const cells = p.days.map((_, i) => {
+      const n = i + 1, open = n <= cur, cls = bothRead(p.id, n) ? "both" : readOf(p.id, n, me) || readOf(p.id, n, o) ? "half" : "";
+      return open ? `<a class="day-cell ${cls} ${n === d ? "on" : ""}" href="#/lecture/${n}" title="Jour ${n} · ${esc(dayRef(p, n))}">${n}</a>` : `<span class="day-cell locked">${n}</span>`;
+    }).join("");
+    $app.innerHTML = pageHead("Lecture à deux", `${p.emoji} ${esc(p.title)}`) + `
+      <div class="reading-layout">
+        <section class="card r-prog">
+          <div class="row between tight"><div class="eyebrow">Jour ${d} sur ${total}</div><a class="small" href="#/lecture/plans">Changer de plan</a></div>
+          <h2 class="reading-ref">${esc(dayRef(p, d))}</h2>
+          ${progBar(planDone(p), total)}
+          <div class="row between"><span class="small">${planDone(p)} jour${planDone(p) > 1 ? "s" : ""} lu${planDone(p) > 1 ? "s" : ""} à deux</span>${readingStreak(p) ? `<span class="small">${readingStreak(p)} jour${readingStreak(p) > 1 ? "s" : ""} de suite 🔥</span>` : ""}</div>
+        </section>
+        <div class="r-text">${chs.map(([b, c], i) => `<article class="card passage">
+          <div class="passage-head"><div class="eyebrow">${BOOKS[b - 1]} ${c}</div>${TTS ? `<button class="listen" data-listen="${i}" aria-label="Écouter ${BOOKS[b - 1]} ${c}">🔊 Écouter</button>` : ""}</div>
+          <div class="verses" id="ch${i}"><p class="muted small">Chargement du texte…</p></div></article>`).join("")}</div>
+        <section class="card r-read">${readBox}</section>
+        <details class="card r-days" ${innerWidth >= 1000 ? "open" : ""}><summary>📅 Tous les jours</summary><div class="day-grid">${cells}</div></details>
+      </div>` + nav("lecture");
+    const load = (i) => {
+      const [b, c] = chs[i], el = $app.querySelector("#ch" + i); if (!el) return;
+      el.innerHTML = `<p class="muted small">Chargement du texte…</p>`;
+      Bible.chapter(b, c).then((t) => {
+        const node = $app.querySelector("#ch" + i); if (!node) return;
+        if (t && Object.keys(t).length) node.innerHTML = versesHTML(t);
+        else { node.innerHTML = `<p class="muted small">Texte indisponible (pas de connexion ?). Tu peux lire ${BOOKS[b - 1]} ${c} dans ta Bible.</p><button class="link" data-retry="${i}">Réessayer</button>`; node.querySelector("[data-retry]").onclick = () => load(i); }
+      });
+    };
+    chs.forEach((_, i) => load(i));
+    $app.querySelectorAll("[data-listen]").forEach((b) => b.onclick = () => speakPassage($app.querySelector("#ch" + b.dataset.listen), b));
+    const btn = $app.querySelector("#lnDone");
+    if (btn) btn.onclick = async () => {
+      btn.disabled = true;
+      await Store.set(`lecture/${p.id}/${d}/${me}`, { at: Date.now(), note: $app.querySelector("#lnNote").value.trim() });
+      if (readOf(p.id, d, o)) { confetti(); toast(d < total ? `Jour ${d + 1} débloqué 📖` : "Plan terminé 🎉"); } else toast("Lecture notée ✓");
+      // on reste sur ce jour pour découvrir ce qui a marqué l'autre, avant de passer au suivant
+      if (location.hash !== `#/lecture/${d}`) go(`#/lecture/${d}`); else render();
+    };
+  }
+
+  // ---------- navigation : barre du bas (mobile) + menu latéral (ordinateur) ----------
+  const SIDE = [
+    ["Au quotidien", [["home", "#/", "🏡", "Accueil"], ["lecture", "#/lecture", "📖", "Lecture"], ["soir", "#/soir", "🌙", "Ce soir"]]],
+    ["Ensemble", [["histoire", "#/histoire", "📸", "Histoire"], ["lettres", "#/lettres", "💌", "Lettres"], ["journal", "#/journal", "🙏", "Journal de prière"], ["promesses", "#/promesses", "✍️", "Promesses"], ["bocal", "#/bocal", "🫙", "Bocal à idées"], ["dates", "#/dates", "📅", "Nos dates"]]],
+    ["Plus", [["creer", "#/creer", "✨", "Créer une semaine"], ["plus", "#/plus", "⚙️", "Bilans & réglages"]]]
+  ];
+  const SIDE_ALIAS = { semaine: "home", bilan: "plus" };
+  function drawSide(route) {
+    const el = document.getElementById("side"); if (!el) return;
+    const active = SIDE_ALIAS[route] || route, b = navBadges();
+    el.innerHTML = `
+      <a class="side-brand" href="#/"><span class="side-logo">🪢</span><span><strong>${esc(CFG.appName)}</strong><span class="duo">${avatar("a", "sm")}${avatar("b", "sm")}</span></span></a>
+      ${SIDE.map(([t, items]) => `<div class="side-group"><div class="eyebrow">${t}</div>${items.map(([id, h, ic, l]) =>
+        `<a href="${h}" class="side-link ${id === active ? "on" : ""}"${id === active ? ' aria-current="page"' : ""}><span class="ni">${ic}</span><span class="grow">${l}</span>${b[id] ? '<i class="side-badge" aria-label="nouveau"></i>' : ""}</a>`).join("")}</div>`).join("")}
+      <div class="side-foot">${avatar(me, "sm")}<span class="grow small">${esc(P(me).name)}</span>${FB ? `<button class="link small" id="sideOut">Déconnexion</button>` : `<a class="small" href="#/joueur">Changer</a>`}</div>`;
+    const so = el.querySelector("#sideOut"); if (so) so.onclick = () => Store.signOut();
+  }
+
   // ---------- 🫙 Bocal à idées de sorties ----------
   const IDEA_CATS = [["maison", "🏠", "À la maison"], ["dehors", "🌳", "Dehors"], ["resto", "🍽️", "Resto / café"], ["gratuit", "💸", "Gratuit"], ["escapade", "✈️", "Escapade"]];
   const catOf = (c) => IDEA_CATS.find((x) => x[0] === c) || ["", "💡", "Idée"];
@@ -1250,7 +1394,7 @@
     const cat = ui.bocalCat || "all", pool = todo.filter((x) => cat === "all" || x.cat === cat);
     const pick = Store.get("idees-tirage"), picked = pick && todo.find((x) => x.id === pick.id);
     const anim = ui.bocalAnim; ui.bocalAnim = false;
-    $app.innerHTML = pageHead("Ensemble", "Bocal à idées", "#/plus") + `
+    $app.innerHTML = pageHead("Ensemble", "Bocal à idées", "#/plus") + `<div class="split"><div class="split-a">
       <section class="card jar-card">
         <div class="jar" id="jar" aria-hidden="true"><span class="jar-glass">🫙</span>${todo.slice(0, 7).map((_, i) => `<i class="paper p${i}"></i>`).join("")}</div>
         <p class="center-text muted small">${todo.length ? `${todo.length} idée${todo.length > 1 ? "s" : ""} dans le bocal` : "Le bocal est vide : ajoutez vos premières idées !"}</p>
@@ -1261,7 +1405,7 @@
           <p class="idea-txt">${esc(picked.text)}</p>
           <div class="row between"><button class="btn sm" id="ideaDone">✔ On l'a fait !</button><button class="link" id="ideaAgain">Une autre</button></div>
         </div>` : ""}
-      </section>
+      </section></div><div class="split-b">
       <section class="card">
         <div class="eyebrow">➕ Ajouter une idée</div>
         <input id="idT" placeholder="Pique-nique au bord du lac, soirée crêpes, musée…" maxlength="160">
@@ -1271,7 +1415,7 @@
       ${todo.length ? `<details class="card idea-list"><summary>Voir les idées du bocal (${todo.length})</summary>
         ${todo.map((x) => `<div class="idea-row"><span>${catOf(x.cat)[1]}</span><span class="grow">${esc(x.text)}<br><span class="small muted">${esc(P(x.by).name)} · ${fmtDate(x.at)}</span></span><button class="link danger" data-idea-del="${x.id}">Retirer</button></div>`).join("")}
       </details>` : ""}
-      ${done.length ? `<h2 class="section">✔ Déjà faites</h2>${done.map((x) => `<div class="card idea-row done"><span>${catOf(x.cat)[1]}</span><span class="grow">${esc(x.text)}<br><span class="small muted">Faite le ${fmtDate(x.doneAt)}</span></span><button class="link" data-idea-back="${x.id}">Remettre</button></div>`).join("")}` : ""}` + nav("plus");
+      ${done.length ? `<h2 class="section">✔ Déjà faites</h2>${done.map((x) => `<div class="card idea-row done"><span>${catOf(x.cat)[1]}</span><span class="grow">${esc(x.text)}<br><span class="small muted">Faite le ${fmtDate(x.doneAt)}</span></span><button class="link" data-idea-back="${x.id}">Remettre</button></div>`).join("")}` : ""}</div></div>` + nav("plus");
 
     $app.querySelectorAll("[data-cat]").forEach((b) => b.onclick = () => { ui.bocalCat = b.dataset.cat; renderBocal(); });
     $app.querySelector("#idAdd").onclick = async () => {
@@ -1368,7 +1512,7 @@
         ${cdNum(d)}</div>
       <div class="row between">${d.inDays >= 0 ? `<button class="chip-btn" data-ics="${d.id}">📅 Ajouter à mon calendrier</button>` : "<span></span>"}<button class="link danger" data-date-del="${d.id}">Supprimer</button></div>
     </article>`;
-    $app.innerHTML = pageHead("Ensemble", "Nos dates", "#/plus") + `
+    $app.innerHTML = pageHead("Ensemble", "Nos dates", "#/plus") + `<div class="split"><div class="split-a">
       <section class="card">
         <div class="eyebrow">➕ Ajouter une date</div>
         <div class="emoji-pick">${DATE_EMOJIS.map((e) => `<button class="${e === ui.dateEmoji ? "on" : ""}" data-demoji="${e}">${e}</button>`).join("")}</div>
@@ -1377,11 +1521,11 @@
         <label class="check-row"><input type="checkbox" id="dR" checked> Revient chaque année (anniversaire)</label>
         <select id="dRem">${[[1, "1 jour"], [3, "3 jours"], [7, "1 semaine"], [14, "2 semaines"], [30, "1 mois"]].map(([v, l]) => `<option value="${v}" ${v === 7 ? "selected" : ""}>🔔 Rappel ${l} avant</option>`).join("")}</select>
         <button class="btn full" id="dAdd">Ajouter</button>
-      </section>
+      </section></div><div class="split-b">
       ${up.length ? `<h2 class="section">⏳ À venir</h2>${up.map(item).join("")}` : ""}
       ${past.length ? `<h2 class="section">🕰️ Souvenirs</h2>${past.map(item).join("")}` : ""}
       ${!all.length ? `<p class="muted center-text small">Ajoutez vos dates importantes : un compte à rebours apparaîtra sur l'accueil, avec un rappel quelques jours avant.</p>` : ""}
-      <p class="small muted center-text">Le rappel s'affiche sur l'accueil. Pour une notification sur ton téléphone, utilise « Ajouter à mon calendrier ».</p>` + nav("plus");
+      <p class="small muted center-text">Le rappel s'affiche sur l'accueil. Pour une notification sur ton téléphone, utilise « Ajouter à mon calendrier ».</p></div></div>` + nav("plus");
     $app.querySelectorAll("[data-demoji]").forEach((b) => b.onclick = () => {
       ui.dateEmoji = b.dataset.demoji;
       $app.querySelectorAll("[data-demoji]").forEach((x) => x.classList.toggle("on", x === b));
