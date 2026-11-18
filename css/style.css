@@ -667,3 +667,9 @@ a.day-cell:hover { transform: scale(1.08); }
 }
 @media (min-width: 700px) { .house-card .house { max-width: 440px; margin: 0 auto; } }
 @media (min-width: 1000px) { .bilans { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; } }
+/* 💡 astuces du bocal */
+.idea-tip { margin: 8px 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(216, 162, 74, .14); font-size: .92rem; line-height: 1.5; }
+.idea-row .grow { display: flex; flex-direction: column; gap: 4px; }
+.idea-row .idea-tip { margin: 2px 0; padding: 6px 9px; font-size: .8rem; }
+[data-theme="dark"] .idea-tip { background: rgba(232, 182, 94, .14); }
+.idea-paste summary, .idea-list summary { cursor: pointer; font-weight: 600; } .idea-paste[open] summary { margin-bottom: 8px; }
