@@ -31,5 +31,5 @@ window.Bible = (function () {
     return out;
   }
 
-  return { passage };
+  return { passage, chapter };
 })();

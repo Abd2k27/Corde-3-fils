@@ -7,7 +7,7 @@ if (CFG.mode === "firebase" && CFG.firebaseConfig) {
   const base = "https://www.gstatic.com/firebasejs/10.12.2/";
   const { initializeApp } = await import(base + "firebase-app.js");
   const { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import(base + "firebase-auth.js");
-  const { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } = await import(base + "firebase-firestore.js");
+  const { getFirestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot } = await import(base + "firebase-firestore.js");
 
   const app = initializeApp(CFG.firebaseConfig);
   const auth = getAuth(app);
@@ -56,6 +56,10 @@ if (CFG.mode === "firebase" && CFG.firebaseConfig) {
     async remove(path) { delete data[path]; await deleteDoc(doc(db, "kv", idOf(path))); },
     subscribe(fn) { subs.push(fn); },
     async reset() { /* désactivé en mode Firebase */ },
+    // Photos : collection "blobs" séparée, chargée à la demande (Firebase Storage exige le forfait Blaze)
+    async getBlob(id) { const d = await getDoc(doc(db, "blobs", id)); return d.exists() ? d.data().data : null; },
+    async setBlob(id, v) { await setDoc(doc(db, "blobs", id), { data: v, at: Date.now() }); },
+    async removeBlob(id) { await deleteDoc(doc(db, "blobs", id)); },
     signIn() { return signInWithPopup(auth, new GoogleAuthProvider()); },
     signOut() { return signOut(auth); }
   };

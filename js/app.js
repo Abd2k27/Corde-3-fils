@@ -7,6 +7,18 @@
     wk.id = pc.id === "couple" ? String(i + 1) : `${pc.id}-${i + 1}`; // "couple" garde les anciennes clés
     WEEKS.push(wk); WK[wk.id] = wk;
   }));
+  // Parcours « Nos semaines » : rempli dynamiquement avec les semaines créées par le couple
+  const PERSO = { id: "perso", emoji: "✍️", title: "Nos semaines", short: "Nos semaines", desc: "Les semaines que vous créez vous-mêmes, sur les thèmes et passages qui vous parlent.", weeks: [], custom: true };
+  PARCOURS.push(PERSO);
+  function syncCustom() {
+    for (let i = WEEKS.length - 1; i >= 0; i--) if (WEEKS[i].parcours === PERSO) { delete WK[WEEKS[i].id]; WEEKS.splice(i, 1); }
+    const items = Store.list("custom/").map((x) => ({ cid: x.path.slice(7), ...x.value })).sort((a, b) => a.at - b.at);
+    PERSO.weeks = items.map((it, i) => {
+      const wk = JSON.parse(JSON.stringify(it));
+      wk.n = i + 1; wk.parcours = PERSO; wk.id = `perso-${it.cid}`; wk.custom = true;
+      WEEKS.push(wk); WK[wk.id] = wk; return wk;
+    });
+  }
   let curP = localStorage.getItem("bc-parcours");
   if (!PARCOURS.find((x) => x.id === curP)) curP = PARCOURS[0].id;
   const weekLabel = (wk) => `${wk.parcours.short} · semaine ${wk.n}`;
@@ -60,9 +72,9 @@
     const a = prog(w, me), b = prog(w, other(me));
     return { mine: !!a.submitted, theirs: !!b.submitted, both: !!(a.submitted && b.submitted), started: Object.keys(a).length > 0 };
   }
-  const unlocked = (w) => { const wk = WK[w]; return !!wk && (CFG.unlockAll || wk.n === 1 || weekState(wk.parcours.weeks[wk.n - 2].id).both); };
+  const unlocked = (w) => { const wk = WK[w]; return !!wk && (CFG.unlockAll || wk.parcours.custom || wk.n === 1 || weekState(wk.parcours.weeks[wk.n - 2].id).both); };
   function parcoursDone(pc) { return pc.weeks.filter((wk) => weekState(wk.id).both).length; }
-  function piecesBuilt(pc) { const d = parcoursDone(pc); return d >= pc.weeks.length ? 7 : Math.floor((d / pc.weeks.length) * 7); }
+  function piecesBuilt(pc) { if (!pc.weeks.length) return 0; const d = parcoursDone(pc); return d >= pc.weeks.length ? 7 : Math.floor((d / pc.weeks.length) * 7); }
 
   function guessScore(q, guess, actual) {
     if (guess == null || actual == null) return 0;
@@ -134,6 +146,7 @@
   }
   function render() {
     resolveMe();
+    if (Store.status !== "signedOut" && Store.list) syncCustom();
     if (parseRoute().name === "guide") return renderGuide();
     if (FB && Store.status === "error") return renderMsg("⚠️", "Connexion à Firebase impossible", esc(Store.error || ""));
     if (FB && Store.status === "signedOut") return renderLogin();
@@ -143,6 +156,13 @@
     if (!localStorage.getItem(GUIDE_KEY)) return go("#/guide");
     if (r.name === "semaine") return renderWeek(r.arg);
     if (r.name === "journal") return renderJournal();
+    if (r.name === "soir") return renderSoir();
+    if (r.name === "promesses") return renderPromesses();
+    if (r.name === "lettres") return renderLettres();
+    if (r.name === "histoire") return renderHistoire();
+    if (r.name === "bilan") return renderBilan(r.arg);
+    if (r.name === "plus") return renderPlus();
+    if (r.name === "creer") return renderCreer(r.arg);
     if (r.name === "joueur") return renderPlayer();
     return renderHome();
   }
@@ -151,7 +171,7 @@
   function onStoreChange(reason) {
     if (reason === "auth") return render();
     const r = parseRoute();
-    if (r.name === "home" || r.name === "journal" || (r.name === "semaine" && [4, 5].includes(ui.step[r.arg]))) {
+    if (["home", "journal", "soir", "promesses", "lettres", "histoire", "bilan", "plus"].includes(r.name) || (r.name === "semaine" && [4, 5].includes(ui.step[r.arg]))) {
       if (document.activeElement && ["TEXTAREA", "INPUT"].includes(document.activeElement.tagName)) return;
       render();
     }
@@ -165,8 +185,8 @@
     { icon: "🪢", title: "Bienvenue !", html: `
         <p><strong>La corde à trois fils</strong>, c'est vous deux… et Dieu au milieu.</p>
         <p>Chaque semaine, un thème biblique sous forme de jeu : environ <strong>15 minutes</strong>, ensemble ou chacun de son côté.</p>
-        <p><strong>${PARCOURS.length} parcours, ${WEEKS.length} semaines</strong> : de quoi grandir ensemble pendant un an.</p>
-        <ul class="g-tips">${PARCOURS.map((x) => `<li>${x.emoji} ${esc(x.title)} <span class="muted">(${x.weeks.length})</span></li>`).join("")}</ul>
+        <p><strong>${PARCOURS.filter((x) => !x.custom).length} parcours, ${WEEKS.length} semaines</strong> : de quoi grandir ensemble pendant un an.</p>
+        <ul class="g-tips">${PARCOURS.filter((x) => !x.custom).map((x) => `<li>${x.emoji} ${esc(x.title)} <span class="muted">(${x.weeks.length})</span></li>`).join("")}</ul>
         <p class="small muted">Faites défiler pour découvrir comment ça marche →</p>` },
     { icon: "📅", title: "Une session en 6 étapes", html: `
         <ol class="g-steps">
@@ -195,6 +215,14 @@
     { icon: "🃏", title: "Joker et journal de prière", html: `
         <p><strong>🃏 Carte Joker</strong> : une fois par semaine, chacun peut poser <em>sa propre question</em> à l'autre.</p>
         <p><strong>🙏 Journal de prière</strong> : notez vos intentions, priez l'un pour l'autre, et marquez-les comme <em>exaucées</em> quand Dieu répond.</p>` },
+    { icon: "🌙", title: "Et aussi, chaque jour…", html: `
+        <ul class="g-steps">
+          <li><b>🌙 Question du jour</b> : une question pour se découvrir, révélée quand vous avez répondu tous les deux.</li>
+          <li><b>📸 Notre histoire</b> : la frise de vos moments importants, avec photos.</li>
+          <li><b>💌 Lettres scellées</b> : écris une lettre qui ne s'ouvrira qu'à la date choisie.</li>
+          <li><b>✍️ Nos promesses</b> : vos engagements, signés à deux.</li>
+          <li><b>✨ Nos semaines</b> : créez vos propres thèmes. <b>📊 Bilans</b> : relisez chaque parcours terminé.</li>
+        </ul>` },
     { icon: "💡", title: "Nos conseils", html: `
         <ul class="g-tips">
           <li>Choisissez un <strong>créneau fixe</strong> (ex. dimanche soir) pour la révélation, ensemble ou en appel.</li>
@@ -262,7 +290,7 @@
           <div class="logo">🪢</div>
           <h1>${esc(CFG.appName)}</h1>
           <p class="hero-verse">« La corde à trois fils ne se rompt pas facilement. »<br><span>Ecclésiaste 4:12</span></p>
-          <p class="hero-sub">Une étude biblique en forme de jeu, pour grandir à deux dans la foi. ${PARCOURS.length} parcours, ${WEEKS.length} semaines, quinze minutes par semaine.</p>
+          <p class="hero-sub">Une étude biblique en forme de jeu, pour grandir à deux dans la foi. ${PARCOURS.filter((x) => !x.custom).length} parcours, ${WEEKS.length} semaines, quinze minutes par semaine.</p>
           <button class="btn" id="login">Se connecter avec Google</button>
           <p class="small warn" id="err"></p>
         </section>
@@ -301,6 +329,10 @@
       const jk = Store.get(`joker/${wk.id}/${o}`);
       if (jk && jk.q && !jk.a) notifs.push(`<a href="#/semaine/${wk.id}" class="notif">🃏 ${esc(P(o).name)} t'a posé une question Joker (${esc(weekLabel(wk))})</a>`);
     });
+    const readyL = listOf("letters/").filter((l) => l.to === me && !l.openedAt && daysUntil(l.openAt) <= 0).length;
+    if (readyL) notifs.push(`<a href="#/lettres" class="notif">💌 Une lettre de ${esc(P(o).name)} peut être ouverte !</a>`);
+    const unsigned = listOf("promises/").filter((p) => p.couple && !(p.signed || {})[me]).length;
+    if (unsigned) notifs.push(`<a href="#/promesses" class="notif">✍️ ${esc(P(o).name)} attend ta signature sur une promesse</a>`);
 
     $app.innerHTML = `
       <header class="top">
@@ -308,13 +340,14 @@
         <div class="row tight"><button class="icon-btn" onclick="location.hash='#/guide'" title="Comment ça marche ?">?</button><div class="duo">${avatar("a")}${avatar("b")}</div></div>
       </header>
       ${notifs.join("")}
+      ${soirCardHTML(todayStr(), true)}
 
       <h2 class="section">Parcours</h2>
       <div class="parcours-bar">
         ${PARCOURS.map((x) => { const d = parcoursDone(x); return `<button class="pc ${x.id === curP ? "on" : ""}" data-pc="${x.id}">
           <span class="pc-emoji">${x.emoji}</span><strong>${esc(x.title)}</strong>
-          <span class="pc-prog"><span style="width:${Math.round((d / x.weeks.length) * 100)}%"></span></span>
-          <span class="small muted">${d}/${x.weeks.length} semaines</span></button>`; }).join("")}
+          <span class="pc-prog"><span style="width:${Math.round((d / (x.weeks.length || 1)) * 100)}%"></span></span>
+          <span class="small muted">${x.custom && !x.weeks.length ? "À vous de créer !" : `${d}/${x.weeks.length} semaines`}</span></button>`; }).join("")}
       </div>
       <p class="pc-desc">${pc.emoji} <strong>${esc(pc.title)}</strong> — ${esc(pc.desc)}</p>
       <section class="card house-card">
@@ -325,6 +358,7 @@
           <div><strong>${s} 🔥</strong><span>série</span></div>
         </div>
         <p class="small muted center-text">${built < 7 ? `Prochaine pièce : ${PIECES[built]}` : "Cette maison est bâtie sur le roc 🙌"} · Matthieu 7:24</p>
+        ${done ? `<a class="btn ${done === pc.weeks.length ? "" : "ghost"} sm bilan-link" href="#/bilan/${pc.id}">${done === pc.weeks.length ? "🎉 Parcours terminé : voir le bilan" : "📊 Voir le bilan"}</a>` : ""}
       </section>
       <div class="weeks">
         ${pc.weeks.map((wk) => {
@@ -341,14 +375,8 @@
             ${chip}
           </button>`;
         }).join("")}
-      </div>
-
-      <button class="btn ghost full" onclick="location.hash='#/journal'">🙏 Journal de prière</button>
-      <footer class="foot small muted">
-        Joueur : <strong>${esc(P(me).name)}</strong> · ${FB ? `<a href="#" id="logout">se déconnecter</a>` : `<a href="#/joueur">changer</a>`}
-        ${Store.mode === "local" ? ` · <a href="#" id="reset">réinitialiser (test)</a>` : ""}
-        <div>Texte biblique : Louis Segond 1910</div>
-      </footer>`;
+        ${pc.custom ? `<a class="btn ghost full" href="#/creer">✨ Créer une semaine</a>` : ""}
+      </div>` + nav("home");
     $app.querySelectorAll(".week[data-w]").forEach((b) => b.onclick = () => go(`#/semaine/${b.dataset.w}`));
     $app.querySelectorAll("[data-pc]").forEach((b) => b.onclick = () => { curP = b.dataset.pc; localStorage.setItem("bc-parcours", curP); renderHome(); });
     const on = $app.querySelector(".pc.on"); if (on) on.scrollIntoView({ inline: "center", block: "nearest" });
@@ -414,16 +442,17 @@
           <div class="eyebrow">${esc(ps.ref)}</div>
           <div class="verses" id="ps${i}">${versesHTML(ps.text)}</div>
         </article>`).join("")}
-      <section class="card kw">
+      ${kw ? `<section class="card kw">
         <div class="eyebrow">🔎 Mot caché</div>
         <p>${esc(kw.hint)}</p>
         <div id="kwZone"></div>
-      </section>
+      </section>` : ""}
       <button class="btn full" id="nx">Continuer →</button>`;
     wk.passages.forEach((ps, i) => Bible.passage(ps).then((t) => { if (t) { const n = el.querySelector("#ps" + i); if (n) n.innerHTML = versesHTML(t); } }));
 
     const zone = el.querySelector("#kwZone");
     const drawKw = () => {
+      if (!kw) return;
       const pp = prog(w, me);
       if (pp.kwDone) {
         zone.innerHTML = pp.keyword ? `<p class="ok">✔ Trouvé : <strong>${esc(kw.answers[0])}</strong> · +5 pts</p>` : `<p class="muted">Le mot était : <strong>${esc(kw.answers[0])}</strong></p>`;
@@ -452,6 +481,11 @@
   // 2 — Mémo (texte à trous)
   function stepMemo(wk, el) {
     const w = wk.id, m = wk.memo;
+    if (!m) {
+      el.innerHTML = `<section class="card center-text"><div class="big-emoji">🧠</div><p class="muted">Pas de verset à mémoriser cette semaine.</p></section><button class="btn full" id="nx">Aux questions →</button>`;
+      el.querySelector("#nx").onclick = async () => { if (!prog(w, me).memoDone) await setProg(w, { memoDone: true, memo: false }); next(w); };
+      return;
+    }
     const parts = m.text.split(/\[([^\]]+)\]/); // impairs = mots à trouver
     const answers = parts.filter((_, i) => i % 2);
     if (!ui.memo[w]) ui.memo[w] = { filled: [], bank: shuffle([...answers, ...m.distractors]) };
@@ -666,9 +700,17 @@
         <textarea id="pr" rows="3" placeholder="Ajoute ton intention de prière…"></textarea>
         <div class="row"><button class="btn sm ghost" id="prSug">+ Ajouter la prière ci-dessus</button><button class="btn sm" id="prAdd">+ Ajouter mon intention</button></div>
       </section>
+      <section class="card">
+        <div class="eyebrow">✍️ Une promesse à garder ?</div>
+        <p class="small muted">Si ce défi vous a fait prendre un engagement, gardez-le dans « Nos promesses ».</p>
+        <textarea id="pmT" rows="2" placeholder="Ex. Prier ensemble chaque dimanche soir"></textarea>
+        <label class="check-row"><input type="checkbox" id="pmC" checked> Promesse de couple (à signer à deux)</label>
+        <button class="btn sm" id="pmAdd">+ Ajouter à nos promesses</button>
+      </section>
       <button class="btn full" onclick="location.hash='#/'">🏡 Retour à la maison</button>`;
     el.querySelector("#dMe").onclick = async () => { const v = !prog(w, me).defi; await setProg(w, { defi: v, defiAt: v ? Date.now() : null }); if (v) toast("Défi relevé ! +10 points"); renderWeek(w); };
     el.querySelector("#prSug").onclick = () => addPrayer(wk.priere, w);
+    el.querySelector("#pmAdd").onclick = async () => { const v = el.querySelector("#pmT").value.trim(); if (!v) return; await addPromise(v, el.querySelector("#pmC").checked, w); el.querySelector("#pmT").value = ""; };
     el.querySelector("#prAdd").onclick = () => { const v = el.querySelector("#pr").value.trim(); if (v) addPrayer(v, w); };
   }
   async function addPrayer(text, w) {
@@ -683,7 +725,7 @@
     const all = Store.list("prayers/").map((x) => ({ id: x.path.split("/")[1], ...x.value })).sort((a, b) => b.at - a.at);
     const tab = ui.journalTab, list = all.filter((p) => (tab === "open" ? !p.answered : p.answered));
     $app.innerHTML = `
-      <header class="top slim"><button class="icon-btn" onclick="location.hash='#/'">←</button><div class="grow"><div class="eyebrow">Ensemble</div><strong>Journal de prière</strong></div></header>
+      <header class="top slim"><button class="icon-btn" onclick="location.hash='#/plus'">←</button><div class="grow"><div class="eyebrow">Ensemble</div><strong>Journal de prière</strong></div></header>
       <section class="card">
         <textarea id="pr" rows="3" placeholder="Une intention de prière, un sujet de reconnaissance…"></textarea>
         <button class="btn full" id="add">Ajouter</button>
@@ -693,8 +735,9 @@
         <article class="card prayer-item ${p.answered ? "answered" : ""}">
           <div class="pi-head">${avatar(p.by, "sm")}<span class="small muted">${esc(P(p.by).name)} · ${fmtDate(p.at)}${p.week != null && WK[p.week] ? ` · ${esc(weekLabel(WK[p.week]))}` : ""}</span></div>
           <p>${esc(p.text)}</p>
-          ${p.answered ? `<p class="small ok">Exaucée le ${fmtDate(p.answeredAt)} 🙌</p>` : `<button class="link" data-done="${p.id}">Marquer comme exaucée</button>`}
-        </article>`).join("") : `<p class="muted center-text">${tab === "open" ? "Aucune intention pour l'instant." : "Les prières exaucées apparaîtront ici."}</p>`}`;
+          ${p.answered ? `<p class="small ok">Exaucée le ${fmtDate(p.answeredAt)} 🙌 · <button class="link" data-story="${p.id}">📌 Ajouter à notre histoire</button></p>` : `<button class="link" data-done="${p.id}">Marquer comme exaucée</button>`}
+        </article>`).join("") : `<p class="muted center-text">${tab === "open" ? "Aucune intention pour l'instant." : "Les prières exaucées apparaîtront ici."}</p>`}` + nav("plus");
+    $app.querySelectorAll("[data-story]").forEach((b) => b.onclick = () => prayerToStory(Store.get(`prayers/${b.dataset.story}`)));
     $app.querySelector("#add").onclick = () => { const v = $app.querySelector("#pr").value.trim(); if (v) addPrayer(v); };
     $app.querySelectorAll("[data-t]").forEach((b) => b.onclick = () => { ui.journalTab = b.dataset.t; renderJournal(); });
     $app.querySelectorAll("[data-done]").forEach((b) => b.onclick = async () => {
@@ -703,6 +746,518 @@
       confetti(); renderJournal();
     });
   }
+
+
+  // =====================================================================
+  // ---------- utilitaires dates & navigation ----------
+  const todayStr = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const parseDay = (s) => { const [y, m, d] = String(s).split("-").map(Number); return new Date(y, m - 1, d); };
+  const fmtDay = (s, opts = { day: "numeric", month: "long", year: "numeric" }) => parseDay(s).toLocaleDateString("fr-FR", opts);
+  const daysUntil = (s) => Math.round((parseDay(s) - parseDay(todayStr())) / 864e5);
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const listOf = (prefix) => Store.list(prefix).map((x) => ({ id: x.path.slice(prefix.length), ...x.value }));
+  const pageHead = (eyebrow, title, back) => `
+    <header class="top ${back ? "slim" : ""}">
+      ${back ? `<button class="icon-btn" onclick="location.hash='${back}'">←</button>` : ""}
+      <div class="grow"><div class="eyebrow">${eyebrow}</div><h1 class="h-title">${title}</h1></div>
+    </header>`;
+
+  const NAV = [["home", "#/", "🏡", "Accueil"], ["soir", "#/soir", "🌙", "Ce soir"], ["histoire", "#/histoire", "📸", "Histoire"], ["lettres", "#/lettres", "💌", "Lettres"], ["plus", "#/plus", "☰", "Plus"]];
+  function navBadges() {
+    return {
+      soir: !Store.get(`soir/${todayStr()}/${me}`),
+      lettres: listOf("letters/").some((l) => l.to === me && !l.openedAt && daysUntil(l.openAt) <= 0)
+    };
+  }
+  function nav(active) {
+    const b = navBadges();
+    return `<div class="nav-space"></div><nav class="bottom-nav">${NAV.map(([id, h, ic, l]) =>
+      `<a href="${h}" class="${id === active ? "on" : ""}"><span class="ni">${ic}${b[id] ? '<i class="dot-badge"></i>' : ""}</span><span>${l}</span></a>`).join("")}</nav>`;
+  }
+
+  // ---------- 🌙 Question du jour ----------
+  const SOIR = window.SOIR_QUESTIONS || ["Qu'est-ce qui t'a fait sourire aujourd'hui ?"];
+  const soirQ = (day) => { const n = Math.round(parseDay(day).getTime() / 864e5); return SOIR[((n % SOIR.length) + SOIR.length) % SOIR.length]; };
+  function soirCardHTML(day, compact) {
+    const o = other(me), q = soirQ(day), mine = Store.get(`soir/${day}/${me}`), th = Store.get(`soir/${day}/${o}`);
+    const isToday = day === todayStr();
+    let body;
+    if (!mine) {
+      body = compact
+        ? `<a class="btn sm" href="#/soir">Répondre →</a>${th ? ` <span class="small muted">${esc(P(o).name)} a déjà répondu 👀</span>` : ""}`
+        : `<textarea data-soir-in="${day}" rows="3" placeholder="Ta réponse… (${esc(P(o).name)} la verra quand vous aurez répondu tous les deux)"></textarea>
+           <div class="row between"><span class="small muted">${th ? `${esc(P(o).name)} a déjà répondu 👀` : ""}</span><button class="btn sm" data-soir-send="${day}">Envoyer</button></div>`;
+    } else if (!th) {
+      body = `<div class="ans">${avatar(me, "sm")}<p>${esc(mine.a)}</p></div><p class="small muted">⏳ ${isToday ? `En attente de ${esc(P(o).name)}…` : `${esc(P(o).name)} n'a pas répondu.`}</p>`;
+    } else {
+      body = `<div class="ans-grid"><div class="ans">${avatar(me, "sm")}<p>${esc(mine.a)}</p></div><div class="ans">${avatar(o, "sm")}<p>${esc(th.a)}</p></div></div>`;
+    }
+    return `<section class="card soir ${compact ? "compact" : ""}">
+      <div class="eyebrow">🌙 ${isToday ? "Question du jour" : fmtDay(day, { weekday: "long", day: "numeric", month: "long" })}</div>
+      <h3>${esc(q)}</h3>${body}</section>`;
+  }
+  function bindSoir(root) {
+    root.querySelectorAll("[data-soir-send]").forEach((b) => b.onclick = async () => {
+      const day = b.dataset.soirSend, v = root.querySelector(`[data-soir-in="${day}"]`).value.trim();
+      if (!v) return;
+      await Store.set(`soir/${day}/${me}`, { a: v, at: Date.now() });
+      if (Store.get(`soir/${day}/${other(me)}`)) confetti(); else toast("Réponse envoyée 🌙");
+      render();
+    });
+  }
+  function renderSoir() {
+    const t = todayStr();
+    const days = [...new Set(Store.list("soir/").map((x) => x.path.split("/")[1]))].filter((d) => d !== t).sort().reverse();
+    $app.innerHTML = pageHead("Chaque jour", "Question du jour") + soirCardHTML(t) +
+      `<h2 class="section">Les jours précédents</h2>` +
+      (days.length ? days.map((d) => soirCardHTML(d)).join("") : `<p class="muted center-text small">Vos réponses s'afficheront ici, jour après jour.</p>`) + nav("soir");
+    bindSoir($app);
+  }
+
+  // ---------- ✍️ Promesses ----------
+  async function addPromise(text, couple, week) {
+    await Store.set(`promises/${newId()}`, { text, couple: !!couple, by: me, at: Date.now(), week: week || null, signed: couple ? { [me]: Date.now() } : null });
+    toast(couple ? "Promesse ajoutée : à signer à deux ✍️" : "Promesse ajoutée ✍️");
+  }
+  function promiseHTML(p) {
+    const signed = p.signed || {}, wk = p.week && WK[p.week], sealed = p.couple && signed.a && signed.b;
+    return `<article class="card promise ${sealed ? "sealed" : ""}">
+      ${sealed ? `<span class="seal" title="Signée par vous deux">💞</span>` : ""}
+      <p class="promise-txt">« ${esc(p.text)} »</p>
+      <div class="pi-head small muted">${avatar(p.by, "sm")} ${esc(P(p.by).name)} · ${fmtDate(p.at)}${wk ? ` · ${esc(weekLabel(wk))}` : ""}</div>
+      ${p.couple ? `<div class="signs">${["a", "b"].map((u) => signed[u]
+        ? `<span class="sign on">${avatar(u, "sm")} Signé</span>`
+        : u === me ? `<button class="sign" data-sign="${p.id}">${avatar(u, "sm")} Signer ✍️</button>` : `<span class="sign">${avatar(u, "sm")} Pas encore signé</span>`).join("")}</div>` : ""}
+      ${p.by === me ? `<button class="link danger" data-del-promise="${p.id}">Supprimer</button>` : ""}
+    </article>`;
+  }
+  function renderPromesses() {
+    const all = listOf("promises/").sort((a, b) => b.at - a.at);
+    const couple = all.filter((p) => p.couple), perso = all.filter((p) => !p.couple);
+    $app.innerHTML = pageHead("Ensemble", "Nos promesses", "#/plus") + `
+      <section class="card">
+        <textarea id="prT" rows="2" placeholder="Une promesse, un engagement que vous voulez garder…"></textarea>
+        <label class="check-row"><input type="checkbox" id="prC" checked> Promesse de couple (à signer tous les deux)</label>
+        <button class="btn full" id="prAdd">Ajouter</button>
+      </section>
+      <h2 class="section">💞 Promesses de couple</h2>
+      ${couple.length ? couple.map(promiseHTML).join("") : `<p class="muted small">Aucune pour l'instant. Les défis de certaines semaines vous en feront écrire !</p>`}
+      <h2 class="section">🙋 Promesses personnelles</h2>
+      ${perso.length ? perso.map(promiseHTML).join("") : `<p class="muted small">Aucune pour l'instant.</p>`}` + nav("plus");
+    $app.querySelector("#prAdd").onclick = async () => {
+      const v = $app.querySelector("#prT").value.trim(); if (!v) return;
+      await addPromise(v, $app.querySelector("#prC").checked); render();
+    };
+    bindPromises($app);
+  }
+  function bindPromises(root) {
+    root.querySelectorAll("[data-sign]").forEach((b) => b.onclick = async () => {
+      const k = `promises/${b.dataset.sign}`, p = Store.get(k);
+      const signed = { ...(p.signed || {}), [me]: Date.now() };
+      await Store.set(k, { ...p, signed });
+      if (signed.a && signed.b) confetti(); render();
+    });
+    root.querySelectorAll("[data-del-promise]").forEach((b) => b.onclick = async () => {
+      if (!confirm("Supprimer cette promesse ?")) return;
+      await Store.remove(`promises/${b.dataset.delPromise}`); render();
+    });
+  }
+
+  // ---------- 💌 Lettres à ouvrir plus tard ----------
+  function addMonths(n) { const d = new Date(); d.setMonth(d.getMonth() + n); return todayStr(d); }
+  function letterHTML(l) {
+    const o = other(me), d = daysUntil(l.openAt), received = l.to === me;
+    if (!received) {
+      return `<article class="card letter sent">
+        <div class="eyebrow">À ${esc(P(l.to).name)} · écrite le ${fmtDate(l.at)}</div>
+        <h3>✉️ ${esc(l.title)}</h3>
+        <p class="small muted">${l.openedAt ? `Ouverte le ${fmtDate(l.openedAt)} 💌` : d > 0 ? `S'ouvrira le ${fmtDay(l.openAt)} (dans ${d} jour${d > 1 ? "s" : ""})` : "Prête à être ouverte"}</p>
+        ${!l.openedAt ? `<button class="link danger" data-del-letter="${l.id}">Supprimer</button>` : ""}
+      </article>`;
+    }
+    if (l.openedAt) {
+      return `<article class="card letter open">
+        <div class="eyebrow">De ${esc(P(l.from).name)} · écrite le ${fmtDate(l.at)} · ouverte le ${fmtDate(l.openedAt)}</div>
+        <h3>💌 ${esc(l.title)}</h3>
+        <p class="letter-txt">${esc(l.text)}</p>
+        <p class="letter-sign">— ${esc(P(l.from).name)}</p>
+      </article>`;
+    }
+    if (d > 0) {
+      return `<article class="card letter locked">
+        <div class="envelope">🔒✉️</div>
+        <h3>${esc(l.title)}</h3>
+        <p class="small muted">De ${esc(P(l.from).name)} · s'ouvrira le <strong>${fmtDay(l.openAt)}</strong><br>encore ${d} jour${d > 1 ? "s" : ""} de patience…</p>
+      </article>`;
+    }
+    return `<article class="card letter ready">
+      <div class="envelope bounce">💌</div>
+      <h3>${esc(l.title)}</h3>
+      <p class="small muted">De ${esc(P(l.from).name)} · c'est le moment !</p>
+      <button class="btn" data-open-letter="${l.id}">Ouvrir la lettre</button>
+    </article>`;
+  }
+  function renderLettres() {
+    const tab = ui.letterTab || "recues", o = other(me);
+    const all = listOf("letters/");
+    const recues = all.filter((l) => l.to === me).sort((a, b) => (a.openedAt ? 1 : 0) - (b.openedAt ? 1 : 0) || a.openAt.localeCompare(b.openAt));
+    const envoyees = all.filter((l) => l.from === me).sort((a, b) => b.at - a.at);
+    let body = "";
+    if (tab === "ecrire") {
+      const quick = [["Dans 1 mois", addMonths(1)], ["Dans 6 mois", addMonths(6)], ["Dans 1 an", addMonths(12)]];
+      body = `<section class="card">
+        <p class="small muted">Écris une lettre à ${esc(P(o).name)}. Elle restera scellée jusqu'à la date choisie.</p>
+        <input id="lT" placeholder="Titre (ex. Pour nos 1 an, Pour le jour de nos fiançailles…)">
+        <textarea id="lX" rows="8" placeholder="Ta lettre…"></textarea>
+        <div class="eyebrow" style="margin-top:10px">Date d'ouverture</div>
+        <div class="row">${quick.map(([l, d]) => `<button class="chip-btn" data-quick="${d}">${l}</button>`).join("")}</div>
+        <input type="date" id="lD" min="${todayStr()}" value="${addMonths(1)}">
+        <button class="btn full" id="lSend">Sceller et envoyer 💌</button>
+      </section>`;
+    } else {
+      const list = tab === "recues" ? recues : envoyees;
+      body = list.length ? list.map(letterHTML).join("") : `<p class="muted center-text small">${tab === "recues" ? `Aucune lettre de ${esc(P(o).name)} pour l'instant.` : "Tu n'as pas encore écrit de lettre."}</p>`;
+    }
+    const ready = recues.filter((l) => !l.openedAt && daysUntil(l.openAt) <= 0).length;
+    $app.innerHTML = pageHead("Pour plus tard", "Lettres scellées") + `
+      <div class="tabs">
+        <button class="${tab === "recues" ? "on" : ""}" data-lt="recues">Reçues${ready ? ` (${ready} 💌)` : ""}</button>
+        <button class="${tab === "envoyees" ? "on" : ""}" data-lt="envoyees">Envoyées</button>
+        <button class="${tab === "ecrire" ? "on" : ""}" data-lt="ecrire">✍️ Écrire</button>
+      </div>${body}` + nav("lettres");
+    $app.querySelectorAll("[data-lt]").forEach((b) => b.onclick = () => { ui.letterTab = b.dataset.lt; renderLettres(); });
+    $app.querySelectorAll("[data-quick]").forEach((b) => b.onclick = () => { $app.querySelector("#lD").value = b.dataset.quick; });
+    const send = $app.querySelector("#lSend");
+    if (send) send.onclick = async () => {
+      const title = $app.querySelector("#lT").value.trim() || "Une lettre pour toi", text = $app.querySelector("#lX").value.trim(), openAt = $app.querySelector("#lD").value;
+      if (!text) return toast("La lettre est vide 🙂");
+      if (!openAt || daysUntil(openAt) < 0) return toast("Choisis une date à venir");
+      await Store.set(`letters/${newId()}`, { from: me, to: o, title, text, openAt, at: Date.now() });
+      ui.letterTab = "envoyees"; toast("Lettre scellée 💌"); render();
+    };
+    $app.querySelectorAll("[data-open-letter]").forEach((b) => b.onclick = async () => {
+      const k = `letters/${b.dataset.openLetter}`;
+      await Store.set(k, { ...Store.get(k), openedAt: Date.now() }); confetti(); render();
+    });
+    $app.querySelectorAll("[data-del-letter]").forEach((b) => b.onclick = async () => {
+      if (!confirm("Supprimer cette lettre ?")) return;
+      await Store.remove(`letters/${b.dataset.delLetter}`); render();
+    });
+  }
+
+  // ---------- 📸 Notre histoire ----------
+  const blobCache = {};
+  function compressImage(file) {
+    return new Promise((res, rej) => {
+      const img = new Image(), url = URL.createObjectURL(file);
+      img.onload = () => {
+        let max = 1280, q = 0.8, out = "";
+        const c = document.createElement("canvas");
+        for (let i = 0; i < 7; i++) {
+          const r = Math.min(1, max / Math.max(img.width, img.height));
+          c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          out = c.toDataURL("image/jpeg", q);
+          if (out.length < 650000) break;
+          max *= 0.8; q = Math.max(0.5, q - 0.07);
+        }
+        URL.revokeObjectURL(url); res(out);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Image illisible")); };
+      img.src = url;
+    });
+  }
+  const MOMENT_EMOJIS = ["💞", "🎉", "🙏", "✨", "🌍", "🎂", "💍", "🏠", "⛪", "🌹"];
+  function renderHistoire() {
+    const items = listOf("story/").sort((a, b) => a.date.localeCompare(b.date) || a.at - b.at);
+    const f = ui.storyForm;
+    let lastYear = null;
+    const timeline = items.map((m) => {
+      const y = m.date.slice(0, 4), sep = y !== lastYear ? `<div class="year">${y}</div>` : ""; lastYear = y;
+      return sep + `<article class="moment">
+        <div class="m-dot">${esc(m.emoji || "💞")}</div>
+        <div class="card m-card">
+          <div class="eyebrow">${fmtDay(m.date)}</div>
+          <h3>${esc(m.title)}</h3>
+          ${m.text ? `<p>${esc(m.text)}</p>` : ""}
+          ${m.hasPhoto ? `<img class="m-photo" data-photo="${m.id}" alt="">` : ""}
+          <div class="row between small muted"><span>${avatar(m.by, "sm")} ajouté par ${esc(P(m.by).name)}</span>${m.by === me ? `<button class="link danger" data-del-story="${m.id}">Supprimer</button>` : ""}</div>
+        </div>
+      </article>`;
+    }).join("");
+    $app.innerHTML = pageHead("Votre frise", "Notre histoire") + (f ? `
+      <section class="card">
+        <h3>Nouveau moment</h3>
+        <input type="date" id="sD" value="${todayStr()}">
+        <div class="emoji-pick">${MOMENT_EMOJIS.map((e, i) => `<button class="${(f.emoji || "💞") === e ? "on" : ""}" data-em="${e}">${e}</button>`).join("")}</div>
+        <input id="sT" placeholder="Titre (ex. Notre rencontre, Premier culte ensemble…)">
+        <textarea id="sX" rows="3" placeholder="Raconte ce moment…"></textarea>
+        <label class="photo-in">📷 Ajouter une photo<input type="file" id="sP" accept="image/*" hidden></label>
+        <img id="sPrev" class="m-photo" hidden alt="">
+        <div class="row between"><button class="btn ghost sm" id="sCancel">Annuler</button><button class="btn sm" id="sSave">Enregistrer</button></div>
+      </section>` : `<button class="btn full" id="sNew">+ Ajouter un moment</button>`) + `
+      <div class="timeline">${timeline || `<p class="muted center-text small" style="margin-top:20px">Votre histoire commence ici : ajoutez votre rencontre, vos premières fois, vos prières exaucées…</p>`}</div>` + nav("histoire");
+
+    const nw = $app.querySelector("#sNew"); if (nw) nw.onclick = () => { ui.storyForm = { emoji: "💞" }; renderHistoire(); };
+    if (f) {
+      $app.querySelectorAll("[data-em]").forEach((b) => b.onclick = () => { f.emoji = b.dataset.em; $app.querySelectorAll("[data-em]").forEach((x) => x.classList.toggle("on", x === b)); });
+      $app.querySelector("#sCancel").onclick = () => { ui.storyForm = null; renderHistoire(); };
+      $app.querySelector("#sP").onchange = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        try { f.photo = await compressImage(file); const pv = $app.querySelector("#sPrev"); pv.src = f.photo; pv.hidden = false; }
+        catch (err) { toast("Photo illisible"); }
+      };
+      $app.querySelector("#sSave").onclick = async (e) => {
+        const title = $app.querySelector("#sT").value.trim(); if (!title) return toast("Donne un titre au moment");
+        e.target.disabled = true; e.target.textContent = "Enregistrement…";
+        const id = newId();
+        try {
+          if (f.photo) { await Store.setBlob(id, f.photo); blobCache[id] = f.photo; }
+          await Store.set(`story/${id}`, { date: $app.querySelector("#sD").value || todayStr(), emoji: f.emoji || "💞", title, text: $app.querySelector("#sX").value.trim(), by: me, at: Date.now(), hasPhoto: !!f.photo });
+          ui.storyForm = null; toast("Moment ajouté 📸"); render();
+        } catch (err) { toast("Erreur : " + err.message); e.target.disabled = false; e.target.textContent = "Enregistrer"; }
+      };
+    }
+    $app.querySelectorAll("[data-photo]").forEach((img) => {
+      const id = img.dataset.photo;
+      if (blobCache[id]) img.src = blobCache[id];
+      else Store.getBlob(id).then((src) => { if (src) { blobCache[id] = src; img.src = src; } }).catch(() => {});
+    });
+    $app.querySelectorAll("[data-del-story]").forEach((b) => b.onclick = async () => {
+      if (!confirm("Supprimer ce moment ?")) return;
+      const id = b.dataset.delStory, m = Store.get(`story/${id}`);
+      if (m && m.hasPhoto) await Store.removeBlob(id).catch(() => {});
+      await Store.remove(`story/${id}`); render();
+    });
+  }
+  async function prayerToStory(p) {
+    await Store.set(`story/${newId()}`, { date: todayStr(), emoji: "🙏", title: "Prière exaucée", text: p.text, by: me, at: Date.now(), hasPhoto: false });
+    toast("Ajoutée à votre histoire 📸");
+  }
+
+  // ---------- 📊 Bilan d'un parcours ----------
+  function renderBilan(pid) {
+    const pc = PARCOURS.find((x) => x.id === pid);
+    if (!pc) return go("#/plus");
+    const doneW = pc.weeks.filter((wk) => weekState(wk.id).both);
+    const st = { a: { pts: 0, ok: 0, tot: 0, kw: 0, memo: 0, defi: 0 }, b: { pts: 0, ok: 0, tot: 0, kw: 0, memo: 0, defi: 0 } };
+    let bonus = 0;
+    const perfect = [], opens = [], lastDone = Math.max(0, ...doneW.map((wk) => Math.max(prog(wk.id, "a").submitted || 0, prog(wk.id, "b").submitted || 0)));
+    pc.weeks.forEach((wk) => {
+      const pts = weekPoints(wk.id); bonus += pts.bonus;
+      ["a", "b"].forEach((u) => { const p = prog(wk.id, u); st[u].pts += pts[u]; if (p.keyword) st[u].kw++; if (p.memo) st[u].memo++; if (p.defi) st[u].defi++; });
+    });
+    doneW.forEach((wk) => {
+      const A = prog(wk.id, "a").answers || {}, B = prog(wk.id, "b").answers || {};
+      wk.questions.forEach((q) => {
+        if (q.type === "ouverte") { opens.push({ wk, q, a: A[q.id]?.self, b: B[q.id]?.self }); return; }
+        const ga = guessScore(q, A[q.id]?.guess, B[q.id]?.self), gb = guessScore(q, B[q.id]?.guess, A[q.id]?.self);
+        st.a.tot++; st.b.tot++; if (ga) st.a.ok++; if (gb) st.b.ok++;
+        if (ga === 10 && gb === 10) perfect.push({ wk, q, a: A[q.id]?.self, b: B[q.id]?.self });
+      });
+    });
+    const prayers = listOf("prayers/").filter((p) => p.week != null && WK[p.week] && WK[p.week].parcours.id === pid);
+    const complete = pc.weeks.length > 0 && doneW.length === pc.weeks.length;
+    const pct = (u) => (st[u].tot ? Math.round((st[u].ok / st[u].tot) * 100) : 0);
+    const statRow = (label, k) => `<tr><td>${label}</td><td>${st.a[k]}</td><td>${st.b[k]}</td></tr>`;
+    $app.innerHTML = pageHead(complete ? "🎉 Parcours terminé" : `Bilan en cours · ${doneW.length}/${pc.weeks.length} semaines`, `${pc.emoji} ${esc(pc.title)}`, "#/plus") + `
+      ${complete ? `<section class="card center-text bilan-hero">${houseSVG(7)}<p>Terminé le <strong>${new Date(lastDone).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</strong>. Votre maison est bâtie sur le roc !</p></section>` : ""}
+      <section class="card">
+        <div class="eyebrow">Les chiffres</div>
+        <table class="g-table bilan-t">
+          <tr><th></th><th>${avatar("a", "sm")} ${esc(P("a").name)}</th><th>${avatar("b", "sm")} ${esc(P("b").name)}</th></tr>
+          ${statRow("Points", "pts")}
+          <tr><td>Paris justes</td><td>${st.a.ok}/${st.a.tot} (${pct("a")} %)</td><td>${st.b.ok}/${st.b.tot} (${pct("b")} %)</td></tr>
+          ${statRow("Mots cachés trouvés", "kw")}${statRow("Versets mémorisés", "memo")}${statRow("Défis relevés", "defi")}
+        </table>
+        <p class="small muted">+ ${bonus} points bonus gagnés à deux · total du parcours : <strong>${st.a.pts + st.b.pts + bonus}</strong></p>
+      </section>
+      ${perfect.length ? `<h2 class="section">🎯 Vos plus beaux paris</h2><p class="small muted">Les questions où vous vous êtes devinés tous les deux.</p>
+        ${perfect.slice(0, 8).map((x) => `<section class="card"><div class="eyebrow">${esc(weekLabel(x.wk))}</div><h4>${esc(x.q.text)}</h4>
+          <div class="ans-grid"><div class="ans">${avatar("a", "sm")}<p>${esc(answerLabel(x.q, x.a))}</p></div><div class="ans">${avatar("b", "sm")}<p>${esc(answerLabel(x.q, x.b))}</p></div></div></section>`).join("")}` : ""}
+      ${opens.length ? `<h2 class="section">💬 Vos réponses ouvertes</h2>
+        ${opens.map((x) => `<section class="card"><div class="eyebrow">${esc(weekLabel(x.wk))}</div><h4>${esc(x.q.text)}</h4>
+          <div class="ans-grid"><div class="ans">${avatar("a", "sm")}<p>${esc(x.a || "—")}</p></div><div class="ans">${avatar("b", "sm")}<p>${esc(x.b || "—")}</p></div></div></section>`).join("")}` : ""}
+      <h2 class="section">🎯 Les défis</h2>
+      ${pc.weeks.map((wk) => { const a = prog(wk.id, "a").defi, b = prog(wk.id, "b").defi; return `<div class="card defi-line"><span class="small muted">S${wk.n}</span><p>${esc(wk.defi)}</p><span>${a ? avatar("a", "sm") : ""}${b ? avatar("b", "sm") : ""}${!a && !b ? `<span class="small muted">—</span>` : ""}</span></div>`; }).join("")}
+      ${prayers.length ? `<h2 class="section">🙏 Prières de ce parcours</h2>${prayers.map((p) => `<div class="card"><p>${esc(p.text)}</p><span class="small ${p.answered ? "ok" : "muted"}">${avatar(p.by, "sm")} ${p.answered ? "Exaucée 🙌" : "En prière"}</span></div>`).join("")}` : ""}
+      ${doneW.length === 0 ? `<p class="muted center-text">Terminez une première semaine à deux pour voir votre bilan se remplir.</p>` : ""}` + nav("plus");
+  }
+
+  // ---------- ☰ Plus ----------
+  function renderPlus() {
+    const tiles = [
+      ["#/journal", "🙏", "Journal de prière", "Vos intentions et les prières exaucées"],
+      ["#/promesses", "✍️", "Nos promesses", "Les engagements que vous avez signés"],
+      ["#/creer", "✨", "Créer une semaine", "Vos propres thèmes et passages"],
+      ["#/guide", "❓", "Comment ça marche", "Revoir le guide"]
+    ];
+    $app.innerHTML = pageHead("Ensemble", "Plus") + `
+      <div class="tiles">${tiles.map(([h, i, t, d]) => `<a class="tile" href="${h}"><span>${i}</span><strong>${t}</strong><small>${d}</small></a>`).join("")}</div>
+      <h2 class="section">📊 Bilans des parcours</h2>
+      ${PARCOURS.filter((x) => x.weeks.length).map((x) => { const d = parcoursDone(x); return `<a class="week" href="#/bilan/${x.id}">
+        <span class="week-emoji">${x.emoji}</span><span class="week-txt"><strong>${esc(x.title)}</strong><span class="pc-prog"><span style="width:${Math.round((d / x.weeks.length) * 100)}%"></span></span></span>
+        <span class="chip ${d === x.weeks.length ? "done" : ""}">${d === x.weeks.length ? "Terminé 🎉" : `${d}/${x.weeks.length}`}</span></a>`; }).join("")}
+      <footer class="foot small muted">
+        Joueur : <strong>${esc(P(me).name)}</strong> · ${FB ? `<a href="#" id="logout">se déconnecter</a>` : `<a href="#/joueur">changer</a>`}
+        ${Store.mode === "local" ? ` · <a href="#" id="reset">réinitialiser (test)</a>` : ""}
+        <div>Texte biblique : Louis Segond 1910</div>
+      </footer>` + nav("plus");
+    const lo = document.getElementById("logout");
+    if (lo) lo.onclick = (e) => { e.preventDefault(); Store.signOut(); };
+    const rs = document.getElementById("reset");
+    if (rs) rs.onclick = async (e) => {
+      e.preventDefault();
+      if (!confirm("Effacer toutes les données de test ?")) return;
+      await Store.reset();
+      Object.keys(localStorage).filter((k) => k.startsWith("bc-draft-") || k.startsWith("bc-blob-")).forEach((k) => localStorage.removeItem(k));
+      go("#/"); render();
+    };
+  }
+
+  // ---------- ✨ Créer une semaine ----------
+  const BOOKS = ["Genèse", "Exode", "Lévitique", "Nombres", "Deutéronome", "Josué", "Juges", "Ruth", "1 Samuel", "2 Samuel", "1 Rois", "2 Rois", "1 Chroniques", "2 Chroniques", "Esdras", "Néhémie", "Esther", "Job", "Psaumes", "Proverbes", "Ecclésiaste", "Cantique des cantiques", "Ésaïe", "Jérémie", "Lamentations", "Ézéchiel", "Daniel", "Osée", "Joël", "Amos", "Abdias", "Jonas", "Michée", "Nahum", "Habacuc", "Sophonie", "Aggée", "Zacharie", "Malachie", "Matthieu", "Marc", "Luc", "Jean", "Actes", "Romains", "1 Corinthiens", "2 Corinthiens", "Galates", "Éphésiens", "Philippiens", "Colossiens", "1 Thessaloniciens", "2 Thessaloniciens", "1 Timothée", "2 Timothée", "Tite", "Philémon", "Hébreux", "Jacques", "1 Pierre", "2 Pierre", "1 Jean", "2 Jean", "3 Jean", "Jude", "Apocalypse"];
+  const QTYPES = [["echelle", "Échelle 1 à 10"], ["tupref", "Tu préfères (A ou B)"], ["choix", "Choix multiple"], ["ouverte", "Question ouverte"]];
+  function blankCW() {
+    return { emoji: "✨", title: "", intro: "", book: 1, chapter: 1, from: 1, to: 3, text: "", kw: "", kwHint: "", memoRef: "", memo: "", traps: "",
+      questions: [{ type: "echelle", text: "", low: "Pas du tout", high: "Tout à fait" }, { type: "tupref", text: "", options: ["", ""] }, { type: "ouverte", text: "" }], defi: "", priere: "" };
+  }
+  function cwFromWeek(w) {
+    const ps = w.passages[0] || {}, vs = Object.keys(ps.text || {}).map(Number);
+    return { emoji: w.emoji, title: w.title, intro: w.intro || "", book: ps.book || 1, chapter: ps.chapter || 1, from: Math.min(...vs) || 1, to: Math.max(...vs) || 1,
+      text: vs.map((v) => `${v} ${ps.text[v]}`).join("\n"), kw: w.keyword ? w.keyword.answers[0] : "", kwHint: w.keyword ? w.keyword.hint : "",
+      memoRef: w.memo ? w.memo.ref : "", memo: w.memo ? w.memo.text : "", traps: w.memo ? w.memo.distractors.join(", ") : "",
+      questions: JSON.parse(JSON.stringify(w.questions)), defi: w.defi || "", priere: w.priere || "" };
+  }
+  function collectCW() {
+    const cw = ui.cw, $ = (s) => $app.querySelector(s);
+    ["emoji", "title", "intro", "text", "kw", "kwHint", "memoRef", "memo", "traps", "defi", "priere"].forEach((k) => { const el = $(`[data-cw="${k}"]`); if (el) cw[k] = el.value; });
+    ["book", "chapter", "from", "to"].forEach((k) => { const el = $(`[data-cw="${k}"]`); if (el) cw[k] = +el.value || 1; });
+    cw.questions = cw.questions.map((q, i) => {
+      const g = (f) => $(`[data-q="${i}"][data-f="${f}"]`);
+      const nq = { type: g("type").value, text: g("text").value };
+      if (nq.type === "echelle") { nq.low = g("low")?.value || "Pas du tout"; nq.high = g("high")?.value || "Tout à fait"; }
+      if (nq.type === "tupref") nq.options = [g("A")?.value || "", g("B")?.value || ""];
+      if (nq.type === "choix") nq.options = (g("opts")?.value || "").split("\n").map((s) => s.trim()).filter(Boolean);
+      return nq;
+    });
+  }
+  function questionEditor(q, i) {
+    let extra = "";
+    if (q.type === "echelle") extra = `<div class="row"><input data-q="${i}" data-f="low" value="${esc(q.low || "Pas du tout")}" placeholder="Valeur 1"><input data-q="${i}" data-f="high" value="${esc(q.high || "Tout à fait")}" placeholder="Valeur 10"></div>`;
+    if (q.type === "tupref") extra = `<input data-q="${i}" data-f="A" value="${esc((q.options || [])[0] || "")}" placeholder="Option A"><input data-q="${i}" data-f="B" value="${esc((q.options || [])[1] || "")}" placeholder="Option B">`;
+    if (q.type === "choix") extra = `<textarea data-q="${i}" data-f="opts" rows="4" placeholder="Une option par ligne (2 à 5)">${esc((q.options || []).join("\n"))}</textarea>`;
+    return `<div class="q-edit">
+      <div class="row between"><strong>Question ${i + 1}</strong><button class="link danger" data-qdel="${i}">Retirer</button></div>
+      <select data-q="${i}" data-f="type">${QTYPES.map(([v, l]) => `<option value="${v}" ${q.type === v ? "selected" : ""}>${l}</option>`).join("")}</select>
+      <input data-q="${i}" data-f="text" value="${esc(q.text)}" placeholder="Texte de la question (écris-la à la 1re personne : « Je… »)">
+      ${extra}
+    </div>`;
+  }
+  function parseVerses(text, from) {
+    const out = {}; let n = from || 1;
+    text.split("\n").map((l) => l.trim()).filter(Boolean).forEach((l) => {
+      const m = l.match(/^(\d+)\s*[.|:)\-]?\s+(.+)$/);
+      if (m) { out[+m[1]] = m[2]; n = +m[1] + 1; } else { out[n] = l; n++; }
+    });
+    return out;
+  }
+  function renderCreer(editId) {
+    const mine = listOf("custom/").sort((a, b) => a.at - b.at);
+    if (!ui.cw || ui.cwEdit !== (editId || null)) {
+      const ex = editId && Store.get(`custom/${editId}`);
+      ui.cw = ex ? cwFromWeek(ex) : blankCW(); ui.cwEdit = editId || null;
+    }
+    const cw = ui.cw;
+    $app.innerHTML = pageHead("Nos semaines", editId ? "Modifier la semaine" : "Créer une semaine", "#/plus") + `
+      ${!editId && mine.length ? `<section class="card"><div class="eyebrow">Vos semaines créées</div>
+        ${mine.map((w) => `<div class="row between cw-item"><span>${esc(w.emoji)} ${esc(w.title)} <span class="small muted">· ${esc(P(w.by).name)}</span></span>
+          <span><a class="link" href="#/semaine/perso-${w.id}">Jouer</a> · <a class="link" href="#/creer/${w.id}">Modifier</a></span></div>`).join("")}</section>` : ""}
+      <section class="card form">
+        <div class="eyebrow">1 · Le thème</div>
+        <div class="row"><input data-cw="emoji" value="${esc(cw.emoji)}" class="emoji-in" maxlength="4"><input data-cw="title" value="${esc(cw.title)}" placeholder="Titre de la semaine" class="grow"></div>
+        <textarea data-cw="intro" rows="3" placeholder="Une courte introduction (ce qu'on va découvrir)">${esc(cw.intro)}</textarea>
+      </section>
+      <section class="card form">
+        <div class="eyebrow">2 · Le passage (Louis Segond 1910)</div>
+        <select data-cw="book">${BOOKS.map((b, i) => `<option value="${i + 1}" ${cw.book === i + 1 ? "selected" : ""}>${b}</option>`).join("")}</select>
+        <div class="row"><label class="mini">Chapitre<input type="number" min="1" data-cw="chapter" value="${cw.chapter}"></label><label class="mini">Du verset<input type="number" min="1" data-cw="from" value="${cw.from}"></label><label class="mini">Au verset<input type="number" min="1" data-cw="to" value="${cw.to}"></label></div>
+        <button class="btn sm ghost" id="cwLoad">📖 Charger le texte</button>
+        <textarea data-cw="text" rows="6" placeholder="Le texte apparaîtra ici (un verset par ligne : « 18 Texte du verset »). Tu peux aussi le coller ou l'écrire.">${esc(cw.text)}</textarea>
+      </section>
+      <section class="card form">
+        <div class="eyebrow">3 · Le mot caché (facultatif)</div>
+        <div class="row"><input data-cw="kw" value="${esc(cw.kw)}" placeholder="Mot à trouver"><input data-cw="kwHint" value="${esc(cw.kwHint)}" placeholder="Indice (ex. Verset 3 : …)"></div>
+      </section>
+      <section class="card form">
+        <div class="eyebrow">4 · Le verset à retenir (facultatif)</div>
+        <input data-cw="memoRef" value="${esc(cw.memoRef)}" placeholder="Référence (ex. Jean 3:16)">
+        <textarea data-cw="memo" rows="3" placeholder="Mets les mots à cacher entre crochets : Car Dieu a tant [aimé] le monde…">${esc(cw.memo)}</textarea>
+        <input data-cw="traps" value="${esc(cw.traps)}" placeholder="Mots pièges, séparés par des virgules (ex. joie, paix)">
+      </section>
+      <section class="card form">
+        <div class="eyebrow">5 · Les questions « Devine ma réponse »</div>
+        ${cw.questions.map(questionEditor).join("")}
+        ${cw.questions.length < 6 ? `<button class="btn sm ghost" id="cwAddQ">+ Ajouter une question</button>` : ""}
+      </section>
+      <section class="card form">
+        <div class="eyebrow">6 · Défi et prière</div>
+        <textarea data-cw="defi" rows="2" placeholder="Le défi de la semaine">${esc(cw.defi)}</textarea>
+        <textarea data-cw="priere" rows="2" placeholder="Une prière à dire ensemble">${esc(cw.priere)}</textarea>
+      </section>
+      <button class="btn full" id="cwSave">${editId ? "Enregistrer les modifications" : "Créer la semaine ✨"}</button>
+      ${editId ? `<button class="btn ghost full danger-btn" id="cwDel">Supprimer cette semaine</button>` : ""}
+      <div class="nav-space"></div>`;
+
+    $app.querySelectorAll('[data-f="type"]').forEach((s) => s.onchange = () => { collectCW(); renderCreer(editId); });
+    $app.querySelectorAll("[data-qdel]").forEach((b) => b.onclick = () => { collectCW(); cw.questions.splice(+b.dataset.qdel, 1); renderCreer(editId); });
+    const addQ = $app.querySelector("#cwAddQ"); if (addQ) addQ.onclick = () => { collectCW(); cw.questions.push({ type: "choix", text: "", options: [] }); renderCreer(editId); };
+    $app.querySelector("#cwLoad").onclick = async (e) => {
+      collectCW(); e.target.textContent = "Chargement…";
+      const ch = await Bible.chapter(cw.book, cw.chapter);
+      if (!ch) { e.target.textContent = "📖 Charger le texte"; return toast("Texte introuvable (hors ligne ?) : colle-le à la main"); }
+      const lines = []; for (let v = cw.from; v <= Math.max(cw.from, cw.to); v++) if (ch[v]) lines.push(`${v} ${ch[v]}`);
+      if (!lines.length) { e.target.textContent = "📖 Charger le texte"; return toast("Ces versets n'existent pas dans ce chapitre"); }
+      cw.text = lines.join("\n"); renderCreer(editId);
+    };
+    $app.querySelector("#cwSave").onclick = async () => {
+      collectCW();
+      if (!cw.title.trim()) return toast("Il manque le titre");
+      const text = parseVerses(cw.text, cw.from);
+      if (!Object.keys(text).length) return toast("Il manque le texte du passage");
+      const qs = cw.questions.filter((q) => q.text.trim());
+      if (!qs.length) return toast("Ajoute au moins une question");
+      for (const q of qs) {
+        if (q.type === "tupref" && (!q.options[0].trim() || !q.options[1].trim())) return toast("Une question « Tu préfères » n'a pas ses 2 options");
+        if (q.type === "choix" && q.options.length < 2) return toast("Une question à choix multiple a moins de 2 options");
+      }
+      const blanks = [...cw.memo.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]);
+      if (cw.memo.trim() && !blanks.length) return toast("Verset à retenir : mets au moins un mot entre [crochets]");
+      let traps = cw.traps.split(",").map((s) => s.trim()).filter((s) => s && !blanks.includes(s));
+      ["foi", "joie", "paix", "vie"].forEach((d) => { if (traps.length < 2 && !blanks.includes(d) && !traps.includes(d)) traps.push(d); });
+      const vs = Object.keys(text).map(Number), ref = `${BOOKS[cw.book - 1]} ${cw.chapter}:${Math.min(...vs)}${vs.length > 1 ? "-" + Math.max(...vs) : ""}`;
+      const id = editId || newId(), prev = editId ? Store.get(`custom/${editId}`) : null;
+      const data = {
+        emoji: cw.emoji.trim() || "✨", title: cw.title.trim(), intro: cw.intro.trim(),
+        passages: [{ ref, book: cw.book, chapter: cw.chapter, text }],
+        keyword: cw.kw.trim() ? { answers: [cw.kw.trim()], hint: cw.kwHint.trim() || "Trouve le mot caché dans le passage." } : null,
+        memo: blanks.length ? { ref: cw.memoRef.trim() || ref, text: cw.memo.trim(), distractors: traps } : null,
+        questions: qs.map((q, i) => ({ ...q, id: "q" + (i + 1), text: q.text.trim() })),
+        defi: cw.defi.trim() || "Prenez un moment cette semaine pour reparler de ce thème ensemble.",
+        priere: cw.priere.trim() || "Seigneur, merci pour ta Parole. Fais-nous grandir ensemble.",
+        by: prev ? prev.by : me, at: prev ? prev.at : Date.now(), editedAt: Date.now()
+      };
+      await Store.set(`custom/${id}`, data);
+      ui.cw = null; ui.cwEdit = null; curP = "perso"; localStorage.setItem("bc-parcours", "perso");
+      toast(editId ? "Semaine modifiée ✨" : "Semaine créée ✨"); go("#/");
+    };
+    const del = $app.querySelector("#cwDel");
+    if (del) del.onclick = async () => {
+      if (!confirm("Supprimer cette semaine (et les réponses associées restent archivées) ?")) return;
+      await Store.remove(`custom/${editId}`); ui.cw = null; ui.cwEdit = null; go("#/creer");
+    };
+  }
+  // =====================================================================
 
   // ---------- démarrage ----------
   function boot() {

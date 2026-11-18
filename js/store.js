@@ -24,6 +24,10 @@ window.Store = (function () {
     async set(path, value) { data = read(); data[path] = value; write(); },
     async remove(path) { data = read(); delete data[path]; write(); },
     subscribe(fn) { subs.push(fn); },
-    async reset() { data = {}; write(); }
+    async reset() { data = {}; write(); },
+    // Photos : stockées à part (trop lourdes pour la synchro globale)
+    async getBlob(id) { try { return localStorage.getItem("bc-blob-" + id); } catch (e) { return null; } },
+    async setBlob(id, v) { try { localStorage.setItem("bc-blob-" + id, v); } catch (e) { throw new Error("Stockage local plein"); } },
+    async removeBlob(id) { localStorage.removeItem("bc-blob-" + id); }
   };
 })();

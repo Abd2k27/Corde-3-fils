@@ -10,5 +10,8 @@ service cloud.firestore {
     match /kv/{id} {
       allow read, write: if estLeCouple();
     }
+    match /blobs/{id} {
+      allow read, write: if estLeCouple();
+    }
   }
 }
