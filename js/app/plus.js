@@ -16,6 +16,7 @@ function renderPlus() {
     <div class="bilans">${PARCOURS.filter((x) => x.weeks.length).map((x) => { const d = parcoursDone(x); return `<a class="week" href="#/bilan/${x.id}">
       <span class="week-emoji">${x.emoji}</span><span class="week-txt"><strong>${esc(x.title)}</strong><span class="pc-prog"><span style="width:${Math.round((d / x.weeks.length) * 100)}%"></span></span></span>
       <span class="chip ${d === x.weeks.length ? "done" : ""}">${d === x.weeks.length ? "Terminé 🎉" : `${d}/${x.weeks.length}`}</span></a>`; }).join("")}</div>
+    ${rythmeSettingsHTML()}
     <h2 class="section">🌓 Apparence</h2>
     <div class="tabs">${THEMES.map(([v, l]) => `<button data-theme-set="${v}" class="${getTheme() === v ? "on" : ""}">${l}</button>`).join("")}</div>
     <p class="small muted pc-desc">Auto suit le réglage de ton appareil · « Le soir » passe en sombre de 20 h à 7 h.</p>
@@ -29,6 +30,7 @@ function renderPlus() {
   const lo = document.getElementById("logout");
   if (lo) lo.onclick = (e) => { e.preventDefault(); Store.signOut(); };
   document.getElementById("export").onclick = (e) => { e.preventDefault(); exportData(); };
+  bindRythmeSettings();
   $app.querySelector("#liteFx").onchange = (e) => { try { localStorage.setItem(LITE_KEY, e.target.checked ? "1" : "0"); } catch (x) {} applyTheme(); };
   $app.querySelectorAll("[data-theme-set]").forEach((b) => b.onclick = () => {
     try { localStorage.setItem(THEME_KEY, b.dataset.themeSet); } catch (e) {}

@@ -178,3 +178,49 @@ test.describe("hors ligne", () => {
     await context.setOffline(false);
   });
 });
+
+test.describe("rendez-vous de la semaine", () => {
+  const jourSemaine = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.getDay(); };
+
+  test("lancer le suivi : échéance dans 7 jours", async ({ ouvrir }) => {
+    const page = await ouvrir();
+    await page.locator("#ryStart").click();
+    await expect(page.locator(".rythme")).toContainText("Encore 7 jours");
+    expect((await donnees(page)).rythme).toMatchObject({ day: jourSemaine(0), since: jour(0), by: "a" });
+    expect((await donnees(page))["vu/a"]).toBe(jour(0)); // dernière visite enregistrée
+  });
+
+  const fait = () => ({ submitted: Date.now(), answers: {} });
+  test("la semaine faite le jour du départ ne compte pas pour l'échéance", async ({ ouvrir }) => {
+    const page = await ouvrir({ donnees: { rythme: { day: jourSemaine(0), since: jour(0) }, "progress/1/a": fait(), "progress/1/b": fait() } });
+    await expect(page.locator(".rythme")).toContainText("Encore 7 jours");
+    await expect(page.locator(".rythme a.btn")).toHaveAttribute("href", "#/semaine/2");
+  });
+  test("une semaine finie à deux valide l'échéance", async ({ ouvrir }) => {
+    const page = await ouvrir({ donnees: { rythme: { day: jourSemaine(-3), since: jour(-3) }, "progress/1/a": fait(), "progress/1/b": fait() } });
+    await expect(page.locator(".rythme")).toContainText("Semaine faite");
+    await expect(page.locator(".ry-dot.ok")).toHaveCount(1);
+  });
+
+  test("semaine manquée et absence signalées", async ({ ouvrir }) => {
+    const page = await ouvrir({ donnees: { rythme: { day: jourSemaine(-10), since: jour(-10) }, "vu/b": jour(-9) } });
+    const carte = page.locator(".rythme");
+    await expect(carte).toHaveClass(/late/);
+    await expect(carte).toContainText("Encore 4 jours");
+    await expect(carte).toContainText("manquée");
+    await expect(carte).toContainText("depuis 9 jours");
+    await expect(page.locator(".ry-dot.missed")).toHaveCount(1);
+    await expect(carte).toContainText("0/1 à l'heure");
+  });
+
+  test("réglages : rappel calendrier et arrêt du suivi", async ({ ouvrir }) => {
+    const page = await ouvrir({ chemin: "#/plus", donnees: { rythme: { day: 3, since: jour(-2) } } });
+    const [dl] = await Promise.all([page.waitForEvent("download"), page.locator("#ryIcs").click()]);
+    const ics = require("fs").readFileSync(await dl.path(), "utf8");
+    expect(ics).toContain("RRULE:FREQ=WEEKLY");
+    expect(ics).toContain(`DTSTART;VALUE=DATE:${jour(5).replace(/-/g, "")}`);
+    await page.locator("#ryStop").click();
+    await expect(page.locator("#ryIcs")).toHaveCount(0);
+    expect((await donnees(page)).rythme).toBeUndefined();
+  });
+});

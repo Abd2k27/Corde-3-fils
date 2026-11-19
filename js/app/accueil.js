@@ -22,6 +22,7 @@ function renderHome() {
     <div class="home-grid">
     <div class="home-side">
     ${notifs.join("")}
+    ${rythmeCardHTML()}
     ${soirCardHTML(todayStr(), true)}
     ${readingCardHTML()}
     ${countdownHTML()}
@@ -63,6 +64,7 @@ function renderHome() {
       }).join("")}
       ${pc.custom ? `<a class="btn ghost full" href="#/creer">✨ Créer une semaine</a>` : ""}
     </div></div></div>` + nav("home");
+  bindRythme();
   $app.querySelectorAll(".week[data-w]").forEach((b) => b.onclick = () => go(`#/semaine/${b.dataset.w}`));
   $app.querySelectorAll("[data-pc]").forEach((b) => b.onclick = () => { curP = b.dataset.pc; localStorage.setItem("bc-parcours", curP); renderHome(); });
   const on = $app.querySelector(".pc.on"); if (on) on.scrollIntoView({ inline: "center", block: "nearest" });

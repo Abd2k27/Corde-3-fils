@@ -13,6 +13,7 @@ function render() {
   if (FB && Store.status === "signedOut") return renderLogin();
   if (FB && Store.status === "denied") return renderMsg("🔒", "Accès réservé", `Le compte <strong>${esc(Store.user?.email)}</strong> n'est pas autorisé.`, true);
   if (!me) return renderPlayer();
+  markVisit(); // dernière visite (suivi des absences), une écriture par jour au plus
   const r = parseRoute();
   if (!localStorage.getItem(GUIDE_KEY)) return go("#/guide");
   if (r.name === "joueur") return renderPlayer();
