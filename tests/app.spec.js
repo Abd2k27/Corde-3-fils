@@ -105,6 +105,21 @@ test("thème sombre", async ({ ouvrir }) => {
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
+test("thème sombre : le chiffre choisi se voit sur une question échelle", async ({ ouvrir }) => {
+  const page = await ouvrir({ chemin: "#/semaine/1", reglages: { "bc-theme": "dark" }, donnees: { "progress/1/a": { seen: true, kwDone: true, memoDone: true } } });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  const fond = (sel) => page.locator(sel).evaluate((e) => getComputedStyle(e).backgroundImage);
+  expect(await fond('.sc[data-v="7"]')).toBe("none");
+  await page.locator('.sc[data-v="7"]').click();
+  await expect(page.locator('.sc[data-v="7"]')).toHaveClass(/\bon\b/);
+  expect(await fond('.sc[data-v="7"]')).toContain("gradient"); // fond orange du bouton choisi
+  await page.locator("#nx").click(); // devine
+  await page.locator('.sc[data-v="5"]').click();
+  await page.locator("#nx").click(); // question A/B
+  await page.locator('.opt[data-v="1"]').click();
+  expect(await fond('.opt[data-v="1"]')).toContain("gradient");
+});
+
 test("modifier une idée du bocal", async ({ ouvrir }) => {
   const page = await ouvrir({ chemin: "#/bocal", donnees: { "idees/x": { text: "Soirée crepes", cat: "maison", tip: "", by: "a", at: 1, done: false } } });
   await page.locator(".idea-list summary").click();
